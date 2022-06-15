@@ -1,6 +1,6 @@
 // +build !appengine
 
-package msgpack
+package ljpack
 
 import (
 	"unsafe"

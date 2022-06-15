@@ -1,11 +1,11 @@
-package msgpack
+package ljpack
 
 import (
 	"fmt"
 	"strconv"
 	"strings"
 
-	"github.com/vmihailenco/msgpack/v5/msgpcode"
+	"github.com/fffonion/ljpack/ljpcode"
 )
 
 type queryResult struct {
@@ -27,7 +27,7 @@ func (q *queryResult) nextKey() {
 	q.query = q.query[ind+1:]
 }
 
-// Query extracts data specified by the query from the msgpack stream skipping
+// Query extracts data specified by the query from the ljpack stream skipping
 // any other data. Query consists of map keys and array indexes separated with dot,
 // e.g. key1.0.key2.
 func (d *Decoder) Query(query string) ([]interface{}, error) {
@@ -57,12 +57,12 @@ func (d *Decoder) query(q *queryResult) error {
 	}
 
 	switch {
-	case code == msgpcode.Map16 || code == msgpcode.Map32 || msgpcode.IsFixedMap(code):
+	case ljpcode.IsMap(code):
 		err = d.queryMapKey(q)
-	case code == msgpcode.Array16 || code == msgpcode.Array32 || msgpcode.IsFixedArray(code):
+	case ljpcode.IsArray(code):
 		err = d.queryArrayIndex(q)
 	default:
-		err = fmt.Errorf("msgpack: unsupported code=%x decoding key=%q", code, q.key)
+		err = fmt.Errorf("ljpack: unsupported code=%x decoding key=%q", code, q.key)
 	}
 	return err
 }

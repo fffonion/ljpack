@@ -1,4 +1,4 @@
-package msgpack_test
+package ljpack_test
 
 import (
 	"bufio"
@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fffonion/ljpack"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	"github.com/vmihailenco/msgpack/v5"
 )
 
 type nameStruct struct {
@@ -22,14 +22,14 @@ type MsgpackTest struct {
 	suite.Suite
 
 	buf *bytes.Buffer
-	enc *msgpack.Encoder
-	dec *msgpack.Decoder
+	enc *ljpack.Encoder
+	dec *ljpack.Decoder
 }
 
 func (t *MsgpackTest) SetUpTest() {
 	t.buf = &bytes.Buffer{}
-	t.enc = msgpack.NewEncoder(t.buf)
-	t.dec = msgpack.NewDecoder(bufio.NewReader(t.buf))
+	t.enc = ljpack.NewEncoder(t.buf)
+	t.dec = ljpack.NewDecoder(bufio.NewReader(t.buf))
 }
 
 func (t *MsgpackTest) TestDecodeNil() {
@@ -135,19 +135,19 @@ type wrapperStruct struct {
 }
 
 var (
-	_ msgpack.CustomEncoder = (*coderStruct)(nil)
-	_ msgpack.CustomDecoder = (*coderStruct)(nil)
+	_ ljpack.CustomEncoder = (*coderStruct)(nil)
+	_ ljpack.CustomDecoder = (*coderStruct)(nil)
 )
 
 func (s *coderStruct) Name() string {
 	return s.name
 }
 
-func (s *coderStruct) EncodeMsgpack(enc *msgpack.Encoder) error {
+func (s *coderStruct) EncodeLJpack(enc *ljpack.Encoder) error {
 	return enc.Encode(s.name)
 }
 
-func (s *coderStruct) DecodeMsgpack(dec *msgpack.Decoder) error {
+func (s *coderStruct) DecodeLJpack(dec *ljpack.Decoder) error {
 	return dec.Decode(&s.name)
 }
 
@@ -230,12 +230,12 @@ func TestEmbedding(t *testing.T) {
 	}
 	var out Struct3
 
-	b, err := msgpack.Marshal(in)
+	b, err := ljpack.Marshal(in)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = msgpack.Unmarshal(b, &out)
+	err = ljpack.Unmarshal(b, &out)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -263,8 +263,8 @@ func (t *MsgpackTest) TestSliceNil() {
 func TestNoPanicOnUnsupportedKey(t *testing.T) {
 	data := []byte{0x81, 0x81, 0xa1, 0x78, 0xc3, 0xc3}
 
-	_, err := msgpack.NewDecoder(bytes.NewReader(data)).DecodeTypedMap()
-	require.EqualError(t, err, "msgpack: unsupported map key: map[string]interface {}")
+	_, err := ljpack.NewDecoder(bytes.NewReader(data)).DecodeTypedMap()
+	require.EqualError(t, err, "ljpack: unsupported map key: map[string]interface {}")
 }
 
 func TestMapDefault(t *testing.T) {
@@ -274,11 +274,11 @@ func TestMapDefault(t *testing.T) {
 			"foo": "bar",
 		},
 	}
-	b, err := msgpack.Marshal(in)
+	b, err := ljpack.Marshal(in)
 	require.Nil(t, err)
 
 	var out map[string]interface{}
-	err = msgpack.Unmarshal(b, &out)
+	err = ljpack.Unmarshal(b, &out)
 	require.Nil(t, err)
 	require.Equal(t, in, out)
 }
@@ -289,14 +289,14 @@ func TestRawMessage(t *testing.T) {
 	}
 
 	type Out struct {
-		Foo msgpack.RawMessage
+		Foo ljpack.RawMessage
 	}
 
 	type Out2 struct {
 		Foo interface{}
 	}
 
-	b, err := msgpack.Marshal(&In{
+	b, err := ljpack.Marshal(&In{
 		Foo: map[string]interface{}{
 			"hello": "world",
 		},
@@ -304,21 +304,21 @@ func TestRawMessage(t *testing.T) {
 	require.Nil(t, err)
 
 	var out Out
-	err = msgpack.Unmarshal(b, &out)
+	err = ljpack.Unmarshal(b, &out)
 	require.Nil(t, err)
 
 	var m map[string]string
-	err = msgpack.Unmarshal(out.Foo, &m)
+	err = ljpack.Unmarshal(out.Foo, &m)
 	require.Nil(t, err)
 	require.Equal(t, map[string]string{
 		"hello": "world",
 	}, m)
 
-	msg := new(msgpack.RawMessage)
+	msg := new(ljpack.RawMessage)
 	out2 := Out2{
 		Foo: msg,
 	}
-	err = msgpack.Unmarshal(b, &out2)
+	err = ljpack.Unmarshal(b, &out2)
 	require.Nil(t, err)
 	require.Equal(t, out.Foo, *msg)
 }
@@ -329,23 +329,23 @@ func TestInterface(t *testing.T) {
 	}
 
 	in := Interface{Foo: "foo"}
-	b, err := msgpack.Marshal(in)
+	b, err := ljpack.Marshal(in)
 	require.Nil(t, err)
 
 	var str string
 	out := Interface{Foo: &str}
-	err = msgpack.Unmarshal(b, &out)
+	err = ljpack.Unmarshal(b, &out)
 	require.Nil(t, err)
 	require.Equal(t, "foo", str)
 }
 
 func TestNaN(t *testing.T) {
 	in := float64(math.NaN())
-	b, err := msgpack.Marshal(in)
+	b, err := ljpack.Marshal(in)
 	require.Nil(t, err)
 
 	var out float64
-	err = msgpack.Unmarshal(b, &out)
+	err = ljpack.Unmarshal(b, &out)
 	require.Nil(t, err)
 	require.True(t, math.IsNaN(out))
 }
@@ -359,9 +359,9 @@ func TestSetSortMapKeys(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	enc := msgpack.NewEncoder(&buf)
+	enc := ljpack.NewEncoder(&buf)
 	enc.SetSortMapKeys(true)
-	dec := msgpack.NewDecoder(&buf)
+	dec := ljpack.NewDecoder(&buf)
 
 	err := enc.Encode(in)
 	require.Nil(t, err)
@@ -383,13 +383,13 @@ func TestSetSortMapKeys(t *testing.T) {
 
 func TestSetOmitEmpty(t *testing.T) {
 	var buf bytes.Buffer
-	enc := msgpack.NewEncoder(&buf)
+	enc := ljpack.NewEncoder(&buf)
 	enc.SetOmitEmpty(true)
 	err := enc.Encode(EmbeddingPtrTest{})
 	require.Nil(t, err)
 
 	var t2 *EmbeddingPtrTest
-	dec := msgpack.NewDecoder(&buf)
+	dec := ljpack.NewDecoder(&buf)
 	err = dec.Decode(&t2)
 	require.Nil(t, err)
 	require.Nil(t, t2.Exported)
@@ -410,11 +410,11 @@ func (i NullInt) IsZero() bool {
 }
 
 func (i NullInt) MarshalMsgpack() ([]byte, error) {
-	return msgpack.Marshal(i.Int)
+	return ljpack.Marshal(i.Int)
 }
 
 func (i *NullInt) UnmarshalMsgpack(b []byte) error {
-	if err := msgpack.Unmarshal(b, &i.Int); err != nil {
+	if err := ljpack.Unmarshal(b, &i.Int); err != nil {
 		return err
 	}
 	i.Valid = true
@@ -427,42 +427,42 @@ type Secretive struct {
 }
 
 type T struct {
-	I NullInt `msgpack:",omitempty"`
+	I NullInt `ljpack:",omitempty"`
 	J NullInt
 	// Secretive is not a "simple" struct because it has an hidden field.
-	S Secretive `msgpack:",omitempty"`
+	S Secretive `ljpack:",omitempty"`
 }
 
 func ExampleMarshal_ignore_simple_zero_structs_when_tagged_with_omitempty() {
 	var t1 T
-	raw, err := msgpack.Marshal(t1)
+	raw, err := ljpack.Marshal(t1)
 	if err != nil {
 		panic(err)
 	}
 	var t2 T
-	if err = msgpack.Unmarshal(raw, &t2); err != nil {
+	if err = ljpack.Unmarshal(raw, &t2); err != nil {
 		panic(err)
 	}
 	fmt.Printf("%#v\n", t2)
 
 	t2.I.Set(42)
 	t2.S.hidden = true // won't be included because it is a hidden field
-	raw, err = msgpack.Marshal(t2)
+	raw, err = ljpack.Marshal(t2)
 	if err != nil {
 		panic(err)
 	}
 	var t3 T
-	if err = msgpack.Unmarshal(raw, &t3); err != nil {
+	if err = ljpack.Unmarshal(raw, &t3); err != nil {
 		panic(err)
 	}
 	fmt.Printf("%#v\n", t3)
-	// Output: msgpack_test.T{I:msgpack_test.NullInt{Valid:false, Int:0}, J:msgpack_test.NullInt{Valid:true, Int:0}, S:msgpack_test.Secretive{Visible:false, hidden:false}}
-	// msgpack_test.T{I:msgpack_test.NullInt{Valid:true, Int:42}, J:msgpack_test.NullInt{Valid:true, Int:0}, S:msgpack_test.Secretive{Visible:false, hidden:false}}
+	// Output: ljpack_test.T{I:ljpack_test.NullInt{Valid:false, Int:0}, J:ljpack_test.NullInt{Valid:true, Int:0}, S:ljpack_test.Secretive{Visible:false, hidden:false}}
+	// ljpack_test.T{I:ljpack_test.NullInt{Valid:true, Int:42}, J:ljpack_test.NullInt{Valid:true, Int:0}, S:ljpack_test.Secretive{Visible:false, hidden:false}}
 }
 
 type Value interface{}
 type Wrapper struct {
-	Value Value `msgpack:"v,omitempty"`
+	Value Value `ljpack:"v,omitempty"`
 }
 
 func TestEncodeWrappedValue(t *testing.T) {
@@ -472,6 +472,6 @@ func TestEncodeWrappedValue(t *testing.T) {
 		Value: v,
 	}
 	var buf bytes.Buffer
-	require.Nil(t, msgpack.NewEncoder(&buf).Encode(v))
-	require.Nil(t, msgpack.NewEncoder(&buf).Encode(c))
+	require.Nil(t, ljpack.NewEncoder(&buf).Encode(v))
+	require.Nil(t, ljpack.NewEncoder(&buf).Encode(c))
 }

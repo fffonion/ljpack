@@ -1,4 +1,4 @@
-package msgpack
+package ljpack
 
 import (
 	"bufio"
@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/vmihailenco/msgpack/v5/msgpcode"
+	"github.com/fffonion/ljpack/ljpcode"
 )
 
 const (
@@ -49,7 +49,7 @@ func PutDecoder(dec *Decoder) {
 
 //------------------------------------------------------------------------------
 
-// Unmarshal decodes the MessagePack-encoded data and stores the result
+// Unmarshal decodes the LJPack-encoded data and stores the result
 // in the value pointed to by v.
 func Unmarshal(data []byte, v interface{}) error {
 	dec := GetDecoder()
@@ -62,7 +62,7 @@ func Unmarshal(data []byte, v interface{}) error {
 	return err
 }
 
-// A Decoder reads and decodes MessagePack values from an input stream.
+// A Decoder reads and decodes LJPack values from an input stream.
 type Decoder struct {
 	r   io.Reader
 	s   io.ByteScanner
@@ -79,7 +79,7 @@ type Decoder struct {
 // NewDecoder returns a new decoder that reads from r.
 //
 // The decoder introduces its own buffering and may read data from r
-// beyond the requested msgpack values. Buffering can be disabled
+// beyond the requested ljpack values. Buffering can be disabled
 // by passing a reader that implements io.ByteScanner interface.
 func NewDecoder(r io.Reader) *Decoder {
 	d := new(Decoder)
@@ -126,7 +126,7 @@ func (d *Decoder) SetMapDecoder(fn func(*Decoder) (interface{}, error)) {
 }
 
 // UseLooseInterfaceDecoding causes decoder to use DecodeInterfaceLoose
-// to decode msgpack value into Go interface{}.
+// to decode ljpack value into Go interface{}.
 func (d *Decoder) UseLooseInterfaceDecoding(on bool) {
 	if on {
 		d.flags |= looseInterfaceDecodingFlag
@@ -136,7 +136,7 @@ func (d *Decoder) UseLooseInterfaceDecoding(on bool) {
 }
 
 // SetCustomStructTag causes the decoder to use the supplied tag as a fallback option
-// if there is no msgpack tag.
+// if there is no ljpack tag.
 func (d *Decoder) SetCustomStructTag(tag string) {
 	d.structTag = tag
 }
@@ -185,16 +185,6 @@ func (d *Decoder) Decode(v interface{}) error {
 			*v, err = d.DecodeInt()
 			return err
 		}
-	case *int8:
-		if v != nil {
-			*v, err = d.DecodeInt8()
-			return err
-		}
-	case *int16:
-		if v != nil {
-			*v, err = d.DecodeInt16()
-			return err
-		}
 	case *int32:
 		if v != nil {
 			*v, err = d.DecodeInt32()
@@ -202,22 +192,12 @@ func (d *Decoder) Decode(v interface{}) error {
 		}
 	case *int64:
 		if v != nil {
-			*v, err = d.DecodeInt64()
+			*v, err = d.DecodeFFIInt64()
 			return err
 		}
 	case *uint:
 		if v != nil {
 			*v, err = d.DecodeUint()
-			return err
-		}
-	case *uint8:
-		if v != nil {
-			*v, err = d.DecodeUint8()
-			return err
-		}
-	case *uint16:
-		if v != nil {
-			*v, err = d.DecodeUint16()
 			return err
 		}
 	case *uint32:
@@ -227,7 +207,13 @@ func (d *Decoder) Decode(v interface{}) error {
 		}
 	case *uint64:
 		if v != nil {
-			*v, err = d.DecodeUint64()
+			*v, err = d.DecodeFFIUint64()
+			return err
+		}
+	case *complex64:
+	case *complex128:
+		if v != nil {
+			*v, err = d.DecodeFFIComplex()
 			return err
 		}
 	case *bool:
@@ -235,14 +221,9 @@ func (d *Decoder) Decode(v interface{}) error {
 			*v, err = d.DecodeBool()
 			return err
 		}
-	case *float32:
-		if v != nil {
-			*v, err = d.DecodeFloat32()
-			return err
-		}
 	case *float64:
 		if v != nil {
-			*v, err = d.DecodeFloat64()
+			*v, err = d.DecodeDouble()
 			return err
 		}
 	case *[]string:
@@ -253,26 +234,30 @@ func (d *Decoder) Decode(v interface{}) error {
 		return d.decodeMapStringInterfacePtr(v)
 	case *time.Duration:
 		if v != nil {
-			vv, err := d.DecodeInt64()
+			vv, err := d.DecodeFFIInt64()
 			*v = time.Duration(vv)
 			return err
 		}
 	case *time.Time:
 		if v != nil {
-			*v, err = d.DecodeTime()
+			i, err := d.DecodeFFIInt64()
+			if err != nil {
+				return err
+			}
+			*v = time.Unix(i, 0)
 			return err
 		}
 	}
 
 	vv := reflect.ValueOf(v)
 	if !vv.IsValid() {
-		return errors.New("msgpack: Decode(nil)")
+		return errors.New("ljpack: Decode(nil)")
 	}
 	if vv.Kind() != reflect.Ptr {
-		return fmt.Errorf("msgpack: Decode(non-pointer %T)", v)
+		return fmt.Errorf("ljpack: Decode(non-pointer %T)", v)
 	}
 	if vv.IsNil() {
-		return fmt.Errorf("msgpack: Decode(non-settable %T)", v)
+		return fmt.Errorf("ljpack: Decode(non-settable %T)", v)
 	}
 
 	vv = vv.Elem()
@@ -280,7 +265,7 @@ func (d *Decoder) Decode(v interface{}) error {
 		if !vv.IsNil() {
 			vv = vv.Elem()
 			if vv.Kind() != reflect.Ptr {
-				return fmt.Errorf("msgpack: Decode(non-pointer %s)", vv.Type().String())
+				return fmt.Errorf("ljpack: Decode(non-pointer %s)", vv.Type().String())
 			}
 		}
 	}
@@ -309,19 +294,19 @@ func (d *Decoder) DecodeValue(v reflect.Value) error {
 	return decode(d, v)
 }
 
-func (d *Decoder) DecodeNil() error {
+func (d *Decoder) DecodeNull() error {
 	c, err := d.readCode()
 	if err != nil {
 		return err
 	}
-	if c != msgpcode.Nil {
-		return fmt.Errorf("msgpack: invalid code=%x decoding nil", c)
+	if c != ljpcode.Null {
+		return fmt.Errorf("ljpack: invalid code=%x decoding null", c)
 	}
 	return nil
 }
 
-func (d *Decoder) decodeNilValue(v reflect.Value) error {
-	err := d.DecodeNil()
+func (d *Decoder) decodeNullValue(v reflect.Value) error {
+	err := d.DecodeNull()
 	if v.IsNil() {
 		return err
 	}
@@ -341,20 +326,20 @@ func (d *Decoder) DecodeBool() (bool, error) {
 }
 
 func (d *Decoder) bool(c byte) (bool, error) {
-	if c == msgpcode.Nil {
+	if c == ljpcode.Nil || c == ljpcode.Null {
 		return false, nil
 	}
-	if c == msgpcode.False {
+	if c == ljpcode.False {
 		return false, nil
 	}
-	if c == msgpcode.True {
+	if c == ljpcode.True {
 		return true, nil
 	}
-	return false, fmt.Errorf("msgpack: invalid code=%x decoding bool", c)
+	return false, fmt.Errorf("ljpack: invalid code=%x decoding bool", c)
 }
 
 func (d *Decoder) DecodeDuration() (time.Duration, error) {
-	n, err := d.DecodeInt64()
+	n, err := d.DecodeFFIInt64()
 	if err != nil {
 		return 0, err
 	}
@@ -381,66 +366,44 @@ func (d *Decoder) DecodeInterface() (interface{}, error) {
 		return nil, err
 	}
 
-	if msgpcode.IsFixedNum(c) {
-		return int8(c), nil
-	}
-	if msgpcode.IsFixedMap(c) {
+	if ljpcode.IsMap(c) {
 		err = d.s.UnreadByte()
 		if err != nil {
 			return nil, err
 		}
 		return d.decodeMapDefault()
 	}
-	if msgpcode.IsFixedArray(c) {
+	if ljpcode.IsArray(c) {
 		return d.decodeSlice(c)
 	}
-	if msgpcode.IsFixedString(c) {
-		return d.string(c)
+	if ljpcode.IsString(c) {
+		err = d.s.UnreadByte()
+		if err != nil {
+			return nil, err
+		}
+		return d.string()
 	}
 
 	switch c {
-	case msgpcode.Nil:
+	case ljpcode.Nil, ljpcode.Null:
 		return nil, nil
-	case msgpcode.False, msgpcode.True:
+	case ljpcode.EmptyTable:
+		return []interface{}{}, nil
+	case ljpcode.False, ljpcode.True:
 		return d.bool(c)
-	case msgpcode.Float:
-		return d.float32(c)
-	case msgpcode.Double:
-		return d.float64(c)
-	case msgpcode.Uint8:
-		return d.uint8()
-	case msgpcode.Uint16:
-		return d.uint16()
-	case msgpcode.Uint32:
-		return d.uint32()
-	case msgpcode.Uint64:
-		return d.uint64()
-	case msgpcode.Int8:
-		return d.int8()
-	case msgpcode.Int16:
-		return d.int16()
-	case msgpcode.Int32:
+	case ljpcode.Int:
 		return d.int32()
-	case msgpcode.Int64:
-		return d.int64()
-	case msgpcode.Bin8, msgpcode.Bin16, msgpcode.Bin32:
-		return d.bytes(c, nil)
-	case msgpcode.Str8, msgpcode.Str16, msgpcode.Str32:
-		return d.string(c)
-	case msgpcode.Array16, msgpcode.Array32:
-		return d.decodeSlice(c)
-	case msgpcode.Map16, msgpcode.Map32:
-		err = d.s.UnreadByte()
-		if err != nil {
-			return nil, err
-		}
-		return d.decodeMapDefault()
-	case msgpcode.FixExt1, msgpcode.FixExt2, msgpcode.FixExt4, msgpcode.FixExt8, msgpcode.FixExt16,
-		msgpcode.Ext8, msgpcode.Ext16, msgpcode.Ext32:
-		return d.decodeInterfaceExt(c)
+	case ljpcode.Double:
+		return d.double(c)
+	case ljpcode.FFIInt64:
+		return d.ffiInt64()
+	case ljpcode.FFIUint64:
+		return d.ffiUint64()
+	case ljpcode.FFIComplex:
+		return d.ffiComplex()
 	}
 
-	return 0, fmt.Errorf("msgpack: unknown code %x decoding interface{}", c)
+	return 0, fmt.Errorf("ljpack: unknown code %x decoding interface{}", c)
 }
 
 // DecodeInterfaceLoose is like DecodeInterface except that:
@@ -454,51 +417,42 @@ func (d *Decoder) DecodeInterfaceLoose() (interface{}, error) {
 		return nil, err
 	}
 
-	if msgpcode.IsFixedNum(c) {
-		return int64(int8(c)), nil
-	}
-	if msgpcode.IsFixedMap(c) {
+	if ljpcode.IsMap(c) {
 		err = d.s.UnreadByte()
 		if err != nil {
 			return nil, err
 		}
 		return d.decodeMapDefault()
 	}
-	if msgpcode.IsFixedArray(c) {
+	if ljpcode.IsArray(c) {
 		return d.decodeSlice(c)
 	}
-	if msgpcode.IsFixedString(c) {
-		return d.string(c)
+	if ljpcode.IsString(c) {
+		err = d.s.UnreadByte()
+		if err != nil {
+			return nil, err
+		}
+		return d.string()
 	}
 
 	switch c {
-	case msgpcode.Nil:
+	case ljpcode.Nil, ljpcode.Null:
 		return nil, nil
-	case msgpcode.False, msgpcode.True:
+	case ljpcode.EmptyTable:
+		return []interface{}{}, nil
+	case ljpcode.False, ljpcode.True:
 		return d.bool(c)
-	case msgpcode.Float, msgpcode.Double:
-		return d.float64(c)
-	case msgpcode.Uint8, msgpcode.Uint16, msgpcode.Uint32, msgpcode.Uint64:
+	case ljpcode.Double:
+		return d.double(c)
+	case ljpcode.FFIUint64:
 		return d.uint(c)
-	case msgpcode.Int8, msgpcode.Int16, msgpcode.Int32, msgpcode.Int64:
+	case ljpcode.Int, ljpcode.FFIInt64:
 		return d.int(c)
-	case msgpcode.Str8, msgpcode.Str16, msgpcode.Str32,
-		msgpcode.Bin8, msgpcode.Bin16, msgpcode.Bin32:
-		return d.string(c)
-	case msgpcode.Array16, msgpcode.Array32:
-		return d.decodeSlice(c)
-	case msgpcode.Map16, msgpcode.Map32:
-		err = d.s.UnreadByte()
-		if err != nil {
-			return nil, err
-		}
-		return d.decodeMapDefault()
-	case msgpcode.FixExt1, msgpcode.FixExt2, msgpcode.FixExt4, msgpcode.FixExt8, msgpcode.FixExt16,
-		msgpcode.Ext8, msgpcode.Ext16, msgpcode.Ext32:
-		return d.decodeInterfaceExt(c)
+	case ljpcode.FFIComplex:
+		return d.ffiComplex()
 	}
 
-	return 0, fmt.Errorf("msgpack: unknown code %x decoding interface{}", c)
+	return 0, fmt.Errorf("ljpack: unknown code %x decoding interface{}", c)
 }
 
 // Skip skips next value.
@@ -508,44 +462,32 @@ func (d *Decoder) Skip() error {
 		return err
 	}
 
-	if msgpcode.IsFixedNum(c) {
-		return nil
-	}
-	if msgpcode.IsFixedMap(c) {
+	if ljpcode.IsMap(c) {
 		return d.skipMap(c)
 	}
-	if msgpcode.IsFixedArray(c) {
+	if ljpcode.IsArray(c) {
 		return d.skipSlice(c)
 	}
-	if msgpcode.IsFixedString(c) {
-		return d.skipBytes(c)
+	if ljpcode.IsString(c) {
+		err = d.s.UnreadByte()
+		if err != nil {
+			return err
+		}
+		return d.skipBytes()
 	}
 
 	switch c {
-	case msgpcode.Nil, msgpcode.False, msgpcode.True:
+	case ljpcode.Nil, ljpcode.Null, ljpcode.False, ljpcode.True, ljpcode.EmptyTable:
 		return nil
-	case msgpcode.Uint8, msgpcode.Int8:
-		return d.skipN(1)
-	case msgpcode.Uint16, msgpcode.Int16:
-		return d.skipN(2)
-	case msgpcode.Uint32, msgpcode.Int32, msgpcode.Float:
+	case ljpcode.Int:
 		return d.skipN(4)
-	case msgpcode.Uint64, msgpcode.Int64, msgpcode.Double:
+	case ljpcode.FFIUint64, ljpcode.FFIInt64, ljpcode.Double:
 		return d.skipN(8)
-	case msgpcode.Bin8, msgpcode.Bin16, msgpcode.Bin32:
-		return d.skipBytes(c)
-	case msgpcode.Str8, msgpcode.Str16, msgpcode.Str32:
-		return d.skipBytes(c)
-	case msgpcode.Array16, msgpcode.Array32:
-		return d.skipSlice(c)
-	case msgpcode.Map16, msgpcode.Map32:
-		return d.skipMap(c)
-	case msgpcode.FixExt1, msgpcode.FixExt2, msgpcode.FixExt4, msgpcode.FixExt8, msgpcode.FixExt16,
-		msgpcode.Ext8, msgpcode.Ext16, msgpcode.Ext32:
-		return d.skipExt(c)
+	case ljpcode.FFIComplex:
+		return d.skipN(16)
 	}
 
-	return fmt.Errorf("msgpack: unknown code %x", c)
+	return fmt.Errorf("ljpack: unknown code %x", c)
 }
 
 func (d *Decoder) DecodeRaw() (RawMessage, error) {
@@ -558,8 +500,8 @@ func (d *Decoder) DecodeRaw() (RawMessage, error) {
 	return msg, nil
 }
 
-// PeekCode returns the next MessagePack code without advancing the reader.
-// Subpackage msgpack/codes defines the list of available msgpcode.
+// PeekCode returns the next LJPack code without advancing the reader.
+// Subpackage ljpack/codes defines the list of available ljpcode.
 func (d *Decoder) PeekCode() (byte, error) {
 	c, err := d.s.ReadByte()
 	if err != nil {
@@ -574,9 +516,9 @@ func (d *Decoder) ReadFull(buf []byte) error {
 	return err
 }
 
-func (d *Decoder) hasNilCode() bool {
+func (d *Decoder) hasNullCode() bool {
 	code, err := d.PeekCode()
-	return err == nil && code == msgpcode.Nil
+	return err == nil && code == ljpcode.Null
 }
 
 func (d *Decoder) readCode() (byte, error) {

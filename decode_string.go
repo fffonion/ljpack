@@ -1,34 +1,15 @@
-package msgpack
+package ljpack
 
 import (
 	"fmt"
 	"reflect"
 
-	"github.com/vmihailenco/msgpack/v5/msgpcode"
+	"github.com/fffonion/ljpack/ljpcode"
 )
 
-func (d *Decoder) bytesLen(c byte) (int, error) {
-	if c == msgpcode.Nil {
-		return -1, nil
-	}
-
-	if msgpcode.IsFixedString(c) {
-		return int(c & msgpcode.FixedStrMask), nil
-	}
-
-	switch c {
-	case msgpcode.Str8, msgpcode.Bin8:
-		n, err := d.uint8()
-		return int(n), err
-	case msgpcode.Str16, msgpcode.Bin16:
-		n, err := d.uint16()
-		return int(n), err
-	case msgpcode.Str32, msgpcode.Bin32:
-		n, err := d.uint32()
-		return int(n), err
-	}
-
-	return 0, fmt.Errorf("msgpack: invalid code=%x decoding string/bytes length", c)
+func (d *Decoder) bytesLen() (int, error) {
+	n, err := d.u124()
+	return int(n) - int(ljpcode.String), err
 }
 
 func (d *Decoder) DecodeString() (string, error) {
@@ -36,15 +17,11 @@ func (d *Decoder) DecodeString() (string, error) {
 		return d.decodeInternedString(intern)
 	}
 
-	c, err := d.readCode()
-	if err != nil {
-		return "", err
-	}
-	return d.string(c)
+	return d.string()
 }
 
-func (d *Decoder) string(c byte) (string, error) {
-	n, err := d.bytesLen(c)
+func (d *Decoder) string() (string, error) {
+	n, err := d.bytesLen()
 	if err != nil {
 		return "", err
 	}
@@ -69,23 +46,15 @@ func decodeStringValue(d *Decoder, v reflect.Value) error {
 }
 
 func (d *Decoder) DecodeBytesLen() (int, error) {
-	c, err := d.readCode()
-	if err != nil {
-		return 0, err
-	}
-	return d.bytesLen(c)
+	return d.bytesLen()
 }
 
 func (d *Decoder) DecodeBytes() ([]byte, error) {
-	c, err := d.readCode()
-	if err != nil {
-		return nil, err
-	}
-	return d.bytes(c, nil)
+	return d.bytes(nil)
 }
 
-func (d *Decoder) bytes(c byte, b []byte) ([]byte, error) {
-	n, err := d.bytesLen(c)
+func (d *Decoder) bytes(b []byte) ([]byte, error) {
+	n, err := d.bytesLen()
 	if err != nil {
 		return nil, err
 	}
@@ -100,12 +69,7 @@ func (d *Decoder) decodeStringTemp() (string, error) {
 		return d.decodeInternedString(intern)
 	}
 
-	c, err := d.readCode()
-	if err != nil {
-		return "", err
-	}
-
-	n, err := d.bytesLen(c)
+	n, err := d.bytesLen()
 	if err != nil {
 		return "", err
 	}
@@ -122,15 +86,11 @@ func (d *Decoder) decodeStringTemp() (string, error) {
 }
 
 func (d *Decoder) decodeBytesPtr(ptr *[]byte) error {
-	c, err := d.readCode()
-	if err != nil {
-		return err
-	}
-	return d.bytesPtr(c, ptr)
+	return d.bytesPtr(ptr)
 }
 
-func (d *Decoder) bytesPtr(c byte, ptr *[]byte) error {
-	n, err := d.bytesLen(c)
+func (d *Decoder) bytesPtr(ptr *[]byte) error {
+	n, err := d.bytesLen()
 	if err != nil {
 		return err
 	}
@@ -143,8 +103,8 @@ func (d *Decoder) bytesPtr(c byte, ptr *[]byte) error {
 	return err
 }
 
-func (d *Decoder) skipBytes(c byte) error {
-	n, err := d.bytesLen(c)
+func (d *Decoder) skipBytes() error {
+	n, err := d.bytesLen()
 	if err != nil {
 		return err
 	}
@@ -155,12 +115,7 @@ func (d *Decoder) skipBytes(c byte) error {
 }
 
 func decodeBytesValue(d *Decoder, v reflect.Value) error {
-	c, err := d.readCode()
-	if err != nil {
-		return err
-	}
-
-	b, err := d.bytes(c, v.Bytes())
+	b, err := d.bytes(v.Bytes())
 	if err != nil {
 		return err
 	}
@@ -171,12 +126,7 @@ func decodeBytesValue(d *Decoder, v reflect.Value) error {
 }
 
 func decodeByteArrayValue(d *Decoder, v reflect.Value) error {
-	c, err := d.readCode()
-	if err != nil {
-		return err
-	}
-
-	n, err := d.bytesLen(c)
+	n, err := d.bytesLen()
 	if err != nil {
 		return err
 	}
@@ -184,7 +134,7 @@ func decodeByteArrayValue(d *Decoder, v reflect.Value) error {
 		return nil
 	}
 	if n > v.Len() {
-		return fmt.Errorf("%s len is %d, but msgpack has %d elements", v.Type(), v.Len(), n)
+		return fmt.Errorf("%s len is %d, but ljpack has %d elements", v.Type(), v.Len(), n)
 	}
 
 	b := v.Slice(0, n).Bytes()

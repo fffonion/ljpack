@@ -1,4 +1,4 @@
-package msgpack_test
+package ljpack_test
 
 import (
 	"bytes"
@@ -12,9 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fffonion/ljpack"
 	"github.com/stretchr/testify/require"
-	"github.com/vmihailenco/msgpack/v5"
-	"github.com/vmihailenco/msgpack/v5/msgpcode"
 )
 
 //------------------------------------------------------------------------------
@@ -23,23 +22,23 @@ type Object struct {
 	n int64
 }
 
-func (o *Object) MarshalMsgpack() ([]byte, error) {
-	return msgpack.Marshal(o.n)
+func (o *Object) MarshalLJpack() ([]byte, error) {
+	return ljpack.Marshal(o.n)
 }
 
-func (o *Object) UnmarshalMsgpack(b []byte) error {
-	return msgpack.Unmarshal(b, &o.n)
+func (o *Object) UnmarshalLJpack(b []byte) error {
+	return ljpack.Unmarshal(b, &o.n)
 }
 
 //------------------------------------------------------------------------------
 
 type CustomTime time.Time
 
-func (t CustomTime) EncodeMsgpack(enc *msgpack.Encoder) error {
+func (t CustomTime) EncodeLJpack(enc *ljpack.Encoder) error {
 	return enc.Encode(time.Time(t))
 }
 
-func (t *CustomTime) DecodeMsgpack(dec *msgpack.Decoder) error {
+func (t *CustomTime) DecodeLJpack(dec *ljpack.Decoder) error {
 	var tm time.Time
 	err := dec.Decode(&tm)
 	if err != nil {
@@ -54,11 +53,11 @@ func (t *CustomTime) DecodeMsgpack(dec *msgpack.Decoder) error {
 type IntSet map[int]struct{}
 
 var (
-	_ msgpack.CustomEncoder = (*IntSet)(nil)
-	_ msgpack.CustomDecoder = (*IntSet)(nil)
+	_ ljpack.CustomEncoder = (*IntSet)(nil)
+	_ ljpack.CustomDecoder = (*IntSet)(nil)
 )
 
-func (set IntSet) EncodeMsgpack(enc *msgpack.Encoder) error {
+func (set IntSet) EncodeLJpack(enc *ljpack.Encoder) error {
 	slice := make([]int, 0, len(set))
 	for n := range set {
 		slice = append(slice, n)
@@ -66,7 +65,7 @@ func (set IntSet) EncodeMsgpack(enc *msgpack.Encoder) error {
 	return enc.Encode(slice)
 }
 
-func (setptr *IntSet) DecodeMsgpack(dec *msgpack.Decoder) error {
+func (setptr *IntSet) DecodeLJpack(dec *ljpack.Decoder) error {
 	n, err := dec.DecodeArrayLen()
 	if err != nil {
 		return err
@@ -94,18 +93,18 @@ type CustomEncoder struct {
 }
 
 var (
-	_ msgpack.CustomEncoder = (*CustomEncoder)(nil)
-	_ msgpack.CustomDecoder = (*CustomEncoder)(nil)
+	_ ljpack.CustomEncoder = (*CustomEncoder)(nil)
+	_ ljpack.CustomDecoder = (*CustomEncoder)(nil)
 )
 
-func (s *CustomEncoder) EncodeMsgpack(enc *msgpack.Encoder) error {
+func (s *CustomEncoder) EncodeLJpack(enc *ljpack.Encoder) error {
 	if s == nil {
 		return enc.EncodeNil()
 	}
 	return enc.EncodeMulti(s.str, s.ref, s.num)
 }
 
-func (s *CustomEncoder) DecodeMsgpack(dec *msgpack.Decoder) error {
+func (s *CustomEncoder) DecodeLJpack(dec *ljpack.Decoder) error {
 	return dec.DecodeMulti(&s.str, &s.ref, &s.num)
 }
 
@@ -117,24 +116,24 @@ type CustomEncoderEmbeddedPtr struct {
 	*CustomEncoder
 }
 
-func (s *CustomEncoderEmbeddedPtr) DecodeMsgpack(dec *msgpack.Decoder) error {
+func (s *CustomEncoderEmbeddedPtr) DecodeLJpack(dec *ljpack.Decoder) error {
 	if s.CustomEncoder == nil {
 		s.CustomEncoder = new(CustomEncoder)
 	}
-	return s.CustomEncoder.DecodeMsgpack(dec)
+	return s.CustomEncoder.DecodeLJpack(dec)
 }
 
 //------------------------------------------------------------------------------
 
 type JSONFallbackTest struct {
 	Foo string `json:"foo,omitempty"`
-	Bar string `json:",omitempty" msgpack:"bar"`
+	Bar string `json:",omitempty" ljpack:"bar"`
 }
 
 func TestUseJsonTag(t *testing.T) {
 	var buf bytes.Buffer
 
-	enc := msgpack.NewEncoder(&buf)
+	enc := ljpack.NewEncoder(&buf)
 	enc.SetCustomStructTag("json")
 
 	in := &JSONFallbackTest{Foo: "hello", Bar: "world"}
@@ -143,7 +142,7 @@ func TestUseJsonTag(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	dec := msgpack.NewDecoder(&buf)
+	dec := ljpack.NewDecoder(&buf)
 	dec.SetCustomStructTag("json")
 
 	out := new(JSONFallbackTest)
@@ -164,13 +163,13 @@ func TestUseJsonTag(t *testing.T) {
 
 type CustomFallbackTest struct {
 	Foo string `custom:"foo,omitempty"`
-	Bar string `custom:",omitempty" msgpack:"bar"`
+	Bar string `custom:",omitempty" ljpack:"bar"`
 }
 
 func TestUseCustomTag(t *testing.T) {
 	var buf bytes.Buffer
 
-	enc := msgpack.NewEncoder(&buf)
+	enc := ljpack.NewEncoder(&buf)
 	enc.SetCustomStructTag("custom")
 	in := &CustomFallbackTest{Foo: "hello", Bar: "world"}
 	err := enc.Encode(in)
@@ -178,7 +177,7 @@ func TestUseCustomTag(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	dec := msgpack.NewDecoder(&buf)
+	dec := ljpack.NewDecoder(&buf)
 	dec.SetCustomStructTag("custom")
 	out := new(CustomFallbackTest)
 	err = dec.Decode(out)
@@ -197,13 +196,13 @@ func TestUseCustomTag(t *testing.T) {
 //------------------------------------------------------------------------------
 
 type OmitTimeTest struct {
-	Foo time.Time  `msgpack:",omitempty"`
-	Bar *time.Time `msgpack:",omitempty"`
+	Foo time.Time  `ljpack:",omitempty"`
+	Bar *time.Time `ljpack:",omitempty"`
 }
 
 type OmitEmptyTest struct {
-	Foo string `msgpack:",omitempty"`
-	Bar string `msgpack:",omitempty"`
+	Foo string `ljpack:",omitempty"`
+	Bar string `ljpack:",omitempty"`
 }
 
 type InlineTest struct {
@@ -226,13 +225,13 @@ type InlineDupTest struct {
 }
 
 type AsArrayTest struct {
-	_msgpack struct{} `msgpack:",as_array"`
+	_ljpack struct{} `ljpack:",as_array"`
 
 	OmitEmptyTest
 }
 
 type ExtTestField struct {
-	ExtTest ExtTest
+	// ExtTest ExtTest
 }
 
 //------------------------------------------------------------------------------
@@ -291,7 +290,7 @@ var encoderTests = []encoderTest{
 
 func TestEncoder(t *testing.T) {
 	var buf bytes.Buffer
-	enc := msgpack.NewEncoder(&buf)
+	enc := ljpack.NewEncoder(&buf)
 	enc.SetCustomStructTag("json")
 	enc.SetSortMapKeys(true)
 	enc.UseCompactInts(true)
@@ -331,7 +330,7 @@ var floatEncoderTests = []floatEncoderTest{
 
 func TestFloatEncoding(t *testing.T) {
 	var buf bytes.Buffer
-	enc := msgpack.NewEncoder(&buf)
+	enc := ljpack.NewEncoder(&buf)
 	enc.UseCompactInts(true)
 
 	for _, test := range floatEncoderTests {
@@ -360,15 +359,15 @@ type decoderTest struct {
 }
 
 var decoderTests = []decoderTest{
-	{b: []byte{byte(msgpcode.Bin32), 0x0f, 0xff, 0xff, 0xff}, out: new([]byte), err: "EOF"},
-	{b: []byte{byte(msgpcode.Str32), 0x0f, 0xff, 0xff, 0xff}, out: new([]byte), err: "EOF"},
-	{b: []byte{byte(msgpcode.Array32), 0x0f, 0xff, 0xff, 0xff}, out: new([]int), err: "EOF"},
-	{b: []byte{byte(msgpcode.Map32), 0x0f, 0xff, 0xff, 0xff}, out: new(map[int]int), err: "EOF"},
+	// {b: []byte{byte(ljpcode.Bin32), 0x0f, 0xff, 0xff, 0xff}, out: new([]byte), err: "EOF"},
+	// {b: []byte{byte(ljpcode.Str32), 0x0f, 0xff, 0xff, 0xff}, out: new([]byte), err: "EOF"},
+	// {b: []byte{byte(ljpcode.Array32), 0x0f, 0xff, 0xff, 0xff}, out: new([]int), err: "EOF"},
+	// {b: []byte{byte(ljpcode.Map32), 0x0f, 0xff, 0xff, 0xff}, out: new(map[int]int), err: "EOF"},
 }
 
 func TestDecoder(t *testing.T) {
 	for i, test := range decoderTests {
-		err := msgpack.Unmarshal(test.b, test.out)
+		err := ljpack.Unmarshal(test.b, test.out)
 		if err == nil {
 			t.Fatalf("#%d err is nil, wanted %q", i, test.err)
 		}
@@ -444,14 +443,14 @@ func (t *typeTest) requireErr(err error, s string) {
 
 var (
 	intSlice   = make([]int, 0, 3)
-	repoURL, _ = url.Parse("https://github.com/vmihailenco/msgpack")
+	repoURL, _ = url.Parse("https://github.com/vmihailenco/ljpack")
 	typeTests  = []typeTest{
-		{in: make(chan bool), encErr: "msgpack: Encode(unsupported chan bool)"},
+		{in: make(chan bool), encErr: "ljpack: Encode(unsupported chan bool)"},
 
-		{in: nil, out: nil, decErr: "msgpack: Decode(nil)"},
-		{in: nil, out: 0, decErr: "msgpack: Decode(non-pointer int)"},
-		{in: nil, out: (*int)(nil), decErr: "msgpack: Decode(non-settable *int)"},
-		{in: nil, out: new(chan bool), decErr: "msgpack: Decode(unsupported chan bool)"},
+		{in: nil, out: nil, decErr: "ljpack: Decode(nil)"},
+		{in: nil, out: 0, decErr: "ljpack: Decode(non-pointer int)"},
+		{in: nil, out: (*int)(nil), decErr: "ljpack: Decode(non-settable *int)"},
+		{in: nil, out: new(chan bool), decErr: "ljpack: Decode(unsupported chan bool)"},
 
 		{in: true, out: new(bool)},
 		{in: false, out: new(bool)},
@@ -487,7 +486,7 @@ var (
 
 		{in: nil, out: new([3]byte), wanted: [3]byte{}},
 		{in: [3]byte{1, 2, 3}, out: new([3]byte)},
-		{in: [3]byte{1, 2, 3}, out: new([2]byte), decErr: "[2]uint8 len is 2, but msgpack has 3 elements"},
+		{in: [3]byte{1, 2, 3}, out: new([2]byte), decErr: "[2]uint8 len is 2, but ljpack has 3 elements"},
 
 		{in: nil, out: new([]interface{}), wantnil: true},
 		{in: nil, out: new([]interface{}), wantnil: true},
@@ -501,7 +500,7 @@ var (
 		{in: []int{1, 2, 3}, out: new([]int)},
 		{in: []int{1, 2, 3}, out: &intSlice},
 		{in: [3]int{1, 2, 3}, out: new([3]int)},
-		{in: [3]int{1, 2, 3}, out: new([2]int), decErr: "[2]int len is 2, but msgpack has 3 elements"},
+		{in: [3]int{1, 2, 3}, out: new([2]int), decErr: "[2]int len is 2, but ljpack has 3 elements"},
 
 		{in: []string(nil), out: new([]string), wantnil: true},
 		{in: []string{}, out: new([]string)},
@@ -594,19 +593,19 @@ var (
 		{
 			in:     AsArrayTest{OmitEmptyTest: OmitEmptyTest{"foo", "bar"}},
 			out:    new(unexported),
-			decErr: "msgpack: number of fields in array-encoded struct has changed",
+			decErr: "ljpack: number of fields in array-encoded struct has changed",
 		},
 
-		{in: (*EventTime)(nil), out: new(*EventTime)},
-		{in: &EventTime{time.Unix(0, 0)}, out: new(*EventTime)},
+		// {in: (*EventTime)(nil), out: new(*EventTime)},
+		// {in: &EventTime{time.Unix(0, 0)}, out: new(*EventTime)},
 
-		{in: (*ExtTest)(nil), out: new(*ExtTest)},
-		{in: &ExtTest{"world"}, out: new(*ExtTest), wanted: ExtTest{"hello world"}},
-		{
-			in:     &ExtTestField{ExtTest{"world"}},
-			out:    new(*ExtTestField),
-			wanted: ExtTestField{ExtTest{"hello world"}},
-		},
+		// {in: (*ExtTest)(nil), out: new(*ExtTest)},
+		// {in: &ExtTest{"world"}, out: new(*ExtTest), wanted: ExtTest{"hello world"}},
+		// {
+		// 	in:     &ExtTestField{ExtTest{"world"}},
+		// 	out:    new(*ExtTestField),
+		// 	wanted: ExtTestField{ExtTest{"hello world"}},
+		// },
 
 		{
 			in:  &InlineTest{OmitEmptyTest: OmitEmptyTest{Bar: "world"}},
@@ -637,14 +636,14 @@ func indirect(viface interface{}) interface{} {
 }
 
 func TestTypes(t *testing.T) {
-	msgpack.RegisterExt(1, (*EventTime)(nil))
+	//ljpack.RegisterExt(1, (*EventTime)(nil))
 
 	for _, test := range typeTests {
 		test.T = t
 
 		var buf bytes.Buffer
 
-		enc := msgpack.NewEncoder(&buf)
+		enc := ljpack.NewEncoder(&buf)
 		err := enc.Encode(test.in)
 		if test.encErr != "" {
 			test.requireErr(err, test.encErr)
@@ -654,7 +653,7 @@ func TestTypes(t *testing.T) {
 			t.Fatalf("Encode failed: %s (in=%#v)", err, test.in)
 		}
 
-		dec := msgpack.NewDecoder(&buf)
+		dec := ljpack.NewDecoder(&buf)
 		err = dec.Decode(test.out)
 		if test.decErr != "" {
 			test.requireErr(err, test.decErr)
@@ -695,14 +694,14 @@ func TestTypes(t *testing.T) {
 			continue
 		}
 
-		b, err := msgpack.Marshal(test.in)
+		b, err := ljpack.Marshal(test.in)
 		if err != nil {
 			t.Fatal(err)
 		}
 
 		var dst interface{}
-		dec := msgpack.NewDecoder(bytes.NewReader(b))
-		dec.SetMapDecoder(func(dec *msgpack.Decoder) (interface{}, error) {
+		dec := ljpack.NewDecoder(bytes.NewReader(b))
+		dec.SetMapDecoder(func(dec *ljpack.Decoder) (interface{}, error) {
 			return dec.DecodeUntypedMap()
 		})
 
@@ -711,8 +710,8 @@ func TestTypes(t *testing.T) {
 			t.Fatalf("Unmarshal into interface{} failed: %s (%s)", err, test)
 		}
 
-		dec = msgpack.NewDecoder(bytes.NewReader(b))
-		dec.SetMapDecoder(func(dec *msgpack.Decoder) (interface{}, error) {
+		dec = ljpack.NewDecoder(bytes.NewReader(b))
+		dec.SetMapDecoder(func(dec *ljpack.Decoder) (interface{}, error) {
 			return dec.DecodeUntypedMap()
 		})
 
@@ -758,30 +757,30 @@ func TestStringsBin(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		b, err := msgpack.Marshal(test.in)
+		b, err := ljpack.Marshal(test.in)
 		require.Nil(t, err)
 		s := hex.EncodeToString(b)
 		require.Equal(t, s, test.wanted)
 
 		var out string
-		err = msgpack.Unmarshal(b, &out)
+		err = ljpack.Unmarshal(b, &out)
 		require.Nil(t, err)
 		require.Equal(t, out, test.in)
 
-		var msg msgpack.RawMessage
-		err = msgpack.Unmarshal(b, &msg)
+		var msg ljpack.RawMessage
+		err = ljpack.Unmarshal(b, &msg)
 		require.Nil(t, err)
 		require.Equal(t, []byte(msg), b)
 
-		dec := msgpack.NewDecoder(bytes.NewReader(b))
+		dec := ljpack.NewDecoder(bytes.NewReader(b))
 		v, err := dec.DecodeInterface()
 		require.Nil(t, err)
 		require.Equal(t, v.(string), test.in)
 
 		var dst interface{}
 		dst = ""
-		err = msgpack.Unmarshal(b, &dst)
-		require.EqualError(t, err, "msgpack: Decode(non-pointer string)")
+		err = ljpack.Unmarshal(b, &dst)
+		require.EqualError(t, err, "ljpack: Decode(non-pointer string)")
 	}
 }
 
@@ -819,7 +818,7 @@ func TestBin(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		b, err := msgpack.Marshal(test.in)
+		b, err := ljpack.Marshal(test.in)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -829,7 +828,7 @@ func TestBin(t *testing.T) {
 		}
 
 		var out []byte
-		err = msgpack.Unmarshal(b, &out)
+		err = ljpack.Unmarshal(b, &out)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -837,7 +836,7 @@ func TestBin(t *testing.T) {
 			t.Fatalf("%x != %x", out, test.in)
 		}
 
-		dec := msgpack.NewDecoder(bytes.NewReader(b))
+		dec := ljpack.NewDecoder(bytes.NewReader(b))
 		v, err := dec.DecodeInterface()
 		if err != nil {
 			t.Fatal(err)
@@ -848,8 +847,8 @@ func TestBin(t *testing.T) {
 
 		var dst interface{}
 		dst = make([]byte, 0)
-		err = msgpack.Unmarshal(b, &dst)
-		if err.Error() != "msgpack: Decode(non-pointer []uint8)" {
+		err = ljpack.Unmarshal(b, &dst)
+		if err.Error() != "ljpack: Decode(non-pointer []uint8)" {
 			t.Fatal(err)
 		}
 	}
@@ -879,7 +878,7 @@ func TestUint64(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	enc := msgpack.NewEncoder(&buf)
+	enc := ljpack.NewEncoder(&buf)
 	enc.UseCompactInts(true)
 
 	for _, test := range tests {
@@ -893,7 +892,7 @@ func TestUint64(t *testing.T) {
 		}
 
 		var out uint64
-		err = msgpack.Unmarshal(buf.Bytes(), &out)
+		err = ljpack.Unmarshal(buf.Bytes(), &out)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -902,7 +901,7 @@ func TestUint64(t *testing.T) {
 		}
 
 		var out2 int64
-		err = msgpack.Unmarshal(buf.Bytes(), &out2)
+		err = ljpack.Unmarshal(buf.Bytes(), &out2)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -912,12 +911,12 @@ func TestUint64(t *testing.T) {
 
 		var out3 interface{}
 		out3 = uint64(0)
-		err = msgpack.Unmarshal(buf.Bytes(), &out3)
-		if err.Error() != "msgpack: Decode(non-pointer uint64)" {
+		err = ljpack.Unmarshal(buf.Bytes(), &out3)
+		if err.Error() != "ljpack: Decode(non-pointer uint64)" {
 			t.Fatal(err)
 		}
 
-		dec := msgpack.NewDecoder(&buf)
+		dec := ljpack.NewDecoder(&buf)
 		_, err = dec.DecodeInterface()
 		if err != nil {
 			t.Fatal(err)
@@ -967,7 +966,7 @@ func TestInt64(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	enc := msgpack.NewEncoder(&buf)
+	enc := ljpack.NewEncoder(&buf)
 	enc.UseCompactInts(true)
 
 	for _, test := range tests {
@@ -981,7 +980,7 @@ func TestInt64(t *testing.T) {
 		}
 
 		var out int64
-		err = msgpack.Unmarshal(buf.Bytes(), &out)
+		err = ljpack.Unmarshal(buf.Bytes(), &out)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -990,7 +989,7 @@ func TestInt64(t *testing.T) {
 		}
 
 		var out2 uint64
-		err = msgpack.Unmarshal(buf.Bytes(), &out2)
+		err = ljpack.Unmarshal(buf.Bytes(), &out2)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1000,12 +999,12 @@ func TestInt64(t *testing.T) {
 
 		var out3 interface{}
 		out3 = int64(0)
-		err = msgpack.Unmarshal(buf.Bytes(), &out3)
-		if err.Error() != "msgpack: Decode(non-pointer int64)" {
+		err = ljpack.Unmarshal(buf.Bytes(), &out3)
+		if err.Error() != "ljpack: Decode(non-pointer int64)" {
 			t.Fatal(err)
 		}
 
-		dec := msgpack.NewDecoder(&buf)
+		dec := ljpack.NewDecoder(&buf)
 		_, err = dec.DecodeInterface()
 		if err != nil {
 			t.Fatal(err)
@@ -1032,7 +1031,7 @@ func TestFloat32(t *testing.T) {
 		{math.SmallestNonzeroFloat32, "ca00000001"},
 	}
 	for _, test := range tests {
-		b, err := msgpack.Marshal(test.in)
+		b, err := ljpack.Marshal(test.in)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1042,7 +1041,7 @@ func TestFloat32(t *testing.T) {
 		}
 
 		var out float32
-		err = msgpack.Unmarshal(b, &out)
+		err = ljpack.Unmarshal(b, &out)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1051,7 +1050,7 @@ func TestFloat32(t *testing.T) {
 		}
 
 		var out2 float64
-		err = msgpack.Unmarshal(b, &out2)
+		err = ljpack.Unmarshal(b, &out2)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1059,7 +1058,7 @@ func TestFloat32(t *testing.T) {
 			t.Fatalf("%f != %f", out2, float64(test.in))
 		}
 
-		dec := msgpack.NewDecoder(bytes.NewReader(b))
+		dec := ljpack.NewDecoder(bytes.NewReader(b))
 		v, err := dec.DecodeInterface()
 		if err != nil {
 			t.Fatal(err)
@@ -1070,20 +1069,20 @@ func TestFloat32(t *testing.T) {
 
 		var dst interface{}
 		dst = float32(0)
-		err = msgpack.Unmarshal(b, &dst)
-		if err.Error() != "msgpack: Decode(non-pointer float32)" {
+		err = ljpack.Unmarshal(b, &dst)
+		if err.Error() != "ljpack: Decode(non-pointer float32)" {
 			t.Fatal(err)
 		}
 	}
 
 	in := float32(math.NaN())
-	b, err := msgpack.Marshal(in)
+	b, err := ljpack.Marshal(in)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	var out float32
-	err = msgpack.Unmarshal(b, &out)
+	err = ljpack.Unmarshal(b, &out)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1107,7 +1106,7 @@ func TestFloat64(t *testing.T) {
 		{math.SmallestNonzeroFloat64, "cb0000000000000001"},
 	}
 	for _, test := range table {
-		b, err := msgpack.Marshal(test.in)
+		b, err := ljpack.Marshal(test.in)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1117,7 +1116,7 @@ func TestFloat64(t *testing.T) {
 		}
 
 		var out float64
-		err = msgpack.Unmarshal(b, &out)
+		err = ljpack.Unmarshal(b, &out)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1125,7 +1124,7 @@ func TestFloat64(t *testing.T) {
 			t.Fatalf("%f != %f", out, test.in)
 		}
 
-		dec := msgpack.NewDecoder(bytes.NewReader(b))
+		dec := ljpack.NewDecoder(bytes.NewReader(b))
 		v, err := dec.DecodeInterface()
 		if err != nil {
 			t.Fatal(err)
@@ -1136,8 +1135,8 @@ func TestFloat64(t *testing.T) {
 
 		var dst interface{}
 		dst = float64(0)
-		err = msgpack.Unmarshal(b, &dst)
-		if err.Error() != "msgpack: Decode(non-pointer float64)" {
+		err = ljpack.Unmarshal(b, &dst)
+		if err.Error() != "ljpack: Decode(non-pointer float64)" {
 			t.Fatal(err)
 		}
 	}

@@ -1,6 +1,6 @@
 // +build appengine
 
-package msgpack
+package ljpack
 
 // bytesToString converts byte slice to string.
 func bytesToString(b []byte) string {

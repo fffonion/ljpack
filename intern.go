@@ -1,11 +1,9 @@
-package msgpack
+package ljpack
 
 import (
 	"fmt"
 	"math"
 	"reflect"
-
-	"github.com/vmihailenco/msgpack/v5/msgpcode"
 )
 
 const (
@@ -16,10 +14,10 @@ const (
 var internedStringExtID = int8(math.MinInt8)
 
 func init() {
-	extTypes[internedStringExtID] = &extInfo{
-		Type:    stringType,
-		Decoder: decodeInternedStringExt,
-	}
+	// extTypes[internedStringExtID] = &extInfo{
+	// 	Type:    stringType,
+	// 	Decoder: decodeInternedStringExt,
+	// }
 }
 
 func decodeInternedStringExt(d *Decoder, v reflect.Value, extLen int) error {
@@ -75,28 +73,28 @@ func (e *Encoder) encodeInternedString(s string, intern bool) error {
 }
 
 func (e *Encoder) encodeInternedStringIndex(idx int) error {
-	if idx <= math.MaxUint8 {
-		if err := e.writeCode(msgpcode.FixExt1); err != nil {
-			return err
-		}
-		return e.write1(byte(internedStringExtID), uint8(idx))
-	}
+	// if idx <= math.MaxUint8 {
+	// 	if err := e.writeCode(ljpcode.FixExt1); err != nil {
+	// 		return err
+	// 	}
+	// 	return e.write1(byte(internedStringExtID), uint8(idx))
+	// }
 
-	if idx <= math.MaxUint16 {
-		if err := e.writeCode(msgpcode.FixExt2); err != nil {
-			return err
-		}
-		return e.write2(byte(internedStringExtID), uint16(idx))
-	}
+	// if idx <= math.MaxUint16 {
+	// 	if err := e.writeCode(ljpcode.FixExt2); err != nil {
+	// 		return err
+	// 	}
+	// 	return e.write2(byte(internedStringExtID), uint16(idx))
+	// }
 
-	if uint64(idx) <= math.MaxUint32 {
-		if err := e.writeCode(msgpcode.FixExt4); err != nil {
-			return err
-		}
-		return e.write4(byte(internedStringExtID), uint32(idx))
-	}
+	// if uint64(idx) <= math.MaxUint32 {
+	// 	if err := e.writeCode(ljpcode.FixExt4); err != nil {
+	// 		return err
+	// 	}
+	// 	return e.write4(byte(internedStringExtID), uint32(idx))
+	// }
 
-	return fmt.Errorf("msgpack: interned string index=%d is too large", idx)
+	return fmt.Errorf("ljpack: interned string index=%d is too large", idx)
 }
 
 //------------------------------------------------------------------------------
@@ -135,50 +133,50 @@ func (d *Decoder) decodeInternedString(intern bool) (string, error) {
 		return "", err
 	}
 
-	if msgpcode.IsFixedString(c) {
-		n := int(c & msgpcode.FixedStrMask)
-		return d.decodeInternedStringWithLen(n, intern)
-	}
+	// if ljpcode.IsFixedString(c) {
+	// 	n := int(c & ljpcode.FixedStrMask)
+	// 	return d.decodeInternedStringWithLen(n, intern)
+	// }
 
-	switch c {
-	case msgpcode.Nil:
-		return "", nil
-	case msgpcode.FixExt1, msgpcode.FixExt2, msgpcode.FixExt4:
-		typeID, extLen, err := d.extHeader(c)
-		if err != nil {
-			return "", err
-		}
-		if typeID != internedStringExtID {
-			err := fmt.Errorf("msgpack: got ext type=%d, wanted %d",
-				typeID, internedStringExtID)
-			return "", err
-		}
+	// switch c {
+	// case ljpcode.Nil:
+	// 	return "", nil
+	// case ljpcode.FixExt1, ljpcode.FixExt2, ljpcode.FixExt4:
+	// 	typeID, extLen, err := d.extHeader(c)
+	// 	if err != nil {
+	// 		return "", err
+	// 	}
+	// 	if typeID != internedStringExtID {
+	// 		err := fmt.Errorf("ljpack: got ext type=%d, wanted %d",
+	// 			typeID, internedStringExtID)
+	// 		return "", err
+	// 	}
 
-		idx, err := d.decodeInternedStringIndex(extLen)
-		if err != nil {
-			return "", err
-		}
+	// 	idx, err := d.decodeInternedStringIndex(extLen)
+	// 	if err != nil {
+	// 		return "", err
+	// 	}
 
-		return d.internedStringAtIndex(idx)
-	case msgpcode.Str8, msgpcode.Bin8:
-		n, err := d.uint8()
-		if err != nil {
-			return "", err
-		}
-		return d.decodeInternedStringWithLen(int(n), intern)
-	case msgpcode.Str16, msgpcode.Bin16:
-		n, err := d.uint16()
-		if err != nil {
-			return "", err
-		}
-		return d.decodeInternedStringWithLen(int(n), intern)
-	case msgpcode.Str32, msgpcode.Bin32:
-		n, err := d.uint32()
-		if err != nil {
-			return "", err
-		}
-		return d.decodeInternedStringWithLen(int(n), intern)
-	}
+	// 	return d.internedStringAtIndex(idx)
+	// case ljpcode.Str8, ljpcode.Bin8:
+	// 	n, err := d.uint8()
+	// 	if err != nil {
+	// 		return "", err
+	// 	}
+	// 	return d.decodeInternedStringWithLen(int(n), intern)
+	// case ljpcode.Str16, ljpcode.Bin16:
+	// 	n, err := d.uint16()
+	// 	if err != nil {
+	// 		return "", err
+	// 	}
+	// 	return d.decodeInternedStringWithLen(int(n), intern)
+	// case ljpcode.Str32, ljpcode.Bin32:
+	// 	n, err := d.uint32()
+	// 	if err != nil {
+	// 		return "", err
+	// 	}
+	// 	return d.decodeInternedStringWithLen(int(n), intern)
+	// }
 
 	return "", unexpectedCodeError{
 		code: c,
@@ -187,34 +185,34 @@ func (d *Decoder) decodeInternedString(intern bool) (string, error) {
 }
 
 func (d *Decoder) decodeInternedStringIndex(extLen int) (int, error) {
-	switch extLen {
-	case 1:
-		n, err := d.uint8()
-		if err != nil {
-			return 0, err
-		}
-		return int(n), nil
-	case 2:
-		n, err := d.uint16()
-		if err != nil {
-			return 0, err
-		}
-		return int(n), nil
-	case 4:
-		n, err := d.uint32()
-		if err != nil {
-			return 0, err
-		}
-		return int(n), nil
-	}
+	// switch extLen {
+	// case 1:
+	// 	n, err := d.uint8()
+	// 	if err != nil {
+	// 		return 0, err
+	// 	}
+	// 	return int(n), nil
+	// case 2:
+	// 	n, err := d.uint16()
+	// 	if err != nil {
+	// 		return 0, err
+	// 	}
+	// 	return int(n), nil
+	// case 4:
+	// 	n, err := d.uint32()
+	// 	if err != nil {
+	// 		return 0, err
+	// 	}
+	// 	return int(n), nil
+	// }
 
-	err := fmt.Errorf("msgpack: unsupported ext len=%d decoding interned string", extLen)
+	err := fmt.Errorf("ljpack: unsupported ext len=%d decoding interned string", extLen)
 	return 0, err
 }
 
 func (d *Decoder) internedStringAtIndex(idx int) (string, error) {
 	if idx >= len(d.dict) {
-		err := fmt.Errorf("msgpack: interned string at index=%d does not exist", idx)
+		err := fmt.Errorf("ljpack: interned string at index=%d does not exist", idx)
 		return "", err
 	}
 	return d.dict[idx], nil

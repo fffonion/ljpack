@@ -1,10 +1,10 @@
-package msgpack
+package ljpack
 
 import (
 	"fmt"
 	"reflect"
 
-	"github.com/vmihailenco/msgpack/v5/msgpcode"
+	"github.com/fffonion/ljpack/ljpcode"
 )
 
 var sliceStringPtrType = reflect.TypeOf((*[]string)(nil))
@@ -13,26 +13,23 @@ var sliceStringPtrType = reflect.TypeOf((*[]string)(nil))
 func (d *Decoder) DecodeArrayLen() (int, error) {
 	c, err := d.readCode()
 	if err != nil {
-		return 0, err
+		return 0, nil
 	}
 	return d.arrayLen(c)
 }
 
 func (d *Decoder) arrayLen(c byte) (int, error) {
-	if c == msgpcode.Nil {
-		return -1, nil
-	} else if c >= msgpcode.FixedArrayLow && c <= msgpcode.FixedArrayHigh {
-		return int(c & msgpcode.FixedArrayMask), nil
+	if c == ljpcode.EmptyTable {
+		return 0, nil
 	}
-	switch c {
-	case msgpcode.Array16:
-		n, err := d.uint16()
-		return int(n), err
-	case msgpcode.Array32:
-		n, err := d.uint32()
-		return int(n), err
+	offset := 1
+	if c == ljpcode.ZeroBasedArray {
+		offset = 0
 	}
-	return 0, fmt.Errorf("msgpack: invalid code=%x decoding array length", c)
+
+	size, err := d.u124()
+	return int(size) - offset, err
+	// TODO: mixed not supported yet
 }
 
 func decodeStringSliceValue(d *Decoder, v reflect.Value) error {
@@ -133,7 +130,7 @@ func decodeArrayValue(d *Decoder, v reflect.Value) error {
 		return nil
 	}
 	if n > v.Len() {
-		return fmt.Errorf("%s len is %d, but msgpack has %d elements", v.Type(), v.Len(), n)
+		return fmt.Errorf("%s len is %d, but ljpack has %d elements", v.Type(), v.Len(), n)
 	}
 
 	for i := 0; i < n; i++ {

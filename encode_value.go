@@ -1,4 +1,4 @@
-package msgpack
+package ljpack
 
 import (
 	"encoding"
@@ -16,16 +16,16 @@ func init() {
 		reflect.Int8:          encodeInt8CondValue,
 		reflect.Int16:         encodeInt16CondValue,
 		reflect.Int32:         encodeInt32CondValue,
-		reflect.Int64:         encodeInt64CondValue,
-		reflect.Uint:          encodeUintValue,
-		reflect.Uint8:         encodeUint8CondValue,
-		reflect.Uint16:        encodeUint16CondValue,
-		reflect.Uint32:        encodeUint32CondValue,
-		reflect.Uint64:        encodeUint64CondValue,
-		reflect.Float32:       encodeFloat32Value,
-		reflect.Float64:       encodeFloat64Value,
-		reflect.Complex64:     encodeUnsupportedValue,
-		reflect.Complex128:    encodeUnsupportedValue,
+		reflect.Int64:         encodeFFIInt64CondValue,
+		reflect.Uint:          encodeDoubleValue,
+		reflect.Uint8:         encodeIntValue,
+		reflect.Uint16:        encodeIntValue,
+		reflect.Uint32:        encodeDoubleValue,
+		reflect.Uint64:        encodeDoubleValue,
+		reflect.Float32:       encodeDoubleValue,
+		reflect.Float64:       encodeDoubleValue,
+		reflect.Complex64:     encodeFFIComplex,
+		reflect.Complex128:    encodeFFIComplex,
 		reflect.Array:         encodeArrayValue,
 		reflect.Chan:          encodeUnsupportedValue,
 		reflect.Func:          encodeUnsupportedValue,
@@ -132,35 +132,35 @@ func ptrEncoderFunc(typ reflect.Type) encoderFunc {
 
 func encodeCustomValuePtr(e *Encoder, v reflect.Value) error {
 	if !v.CanAddr() {
-		return fmt.Errorf("msgpack: Encode(non-addressable %T)", v.Interface())
+		return fmt.Errorf("ljpack: Encode(non-addressable %T)", v.Interface())
 	}
 	encoder := v.Addr().Interface().(CustomEncoder)
-	return encoder.EncodeMsgpack(e)
+	return encoder.EncodeLJpack(e)
 }
 
 func encodeCustomValue(e *Encoder, v reflect.Value) error {
 	if nilable(v.Kind()) && v.IsNil() {
-		return e.EncodeNil()
+		return e.EncodeNull()
 	}
 
 	encoder := v.Interface().(CustomEncoder)
-	return encoder.EncodeMsgpack(e)
+	return encoder.EncodeLJpack(e)
 }
 
 func marshalValuePtr(e *Encoder, v reflect.Value) error {
 	if !v.CanAddr() {
-		return fmt.Errorf("msgpack: Encode(non-addressable %T)", v.Interface())
+		return fmt.Errorf("ljpack: Encode(non-addressable %T)", v.Interface())
 	}
 	return marshalValue(e, v.Addr())
 }
 
 func marshalValue(e *Encoder, v reflect.Value) error {
 	if nilable(v.Kind()) && v.IsNil() {
-		return e.EncodeNil()
+		return e.EncodeNull()
 	}
 
 	marshaler := v.Interface().(Marshaler)
-	b, err := marshaler.MarshalMsgpack()
+	b, err := marshaler.MarshalLJpack()
 	if err != nil {
 		return err
 	}
@@ -174,20 +174,20 @@ func encodeBoolValue(e *Encoder, v reflect.Value) error {
 
 func encodeInterfaceValue(e *Encoder, v reflect.Value) error {
 	if v.IsNil() {
-		return e.EncodeNil()
+		return e.EncodeNull()
 	}
 	return e.EncodeValue(v.Elem())
 }
 
 func encodeErrorValue(e *Encoder, v reflect.Value) error {
 	if v.IsNil() {
-		return e.EncodeNil()
+		return e.EncodeNull()
 	}
 	return e.EncodeString(v.Interface().(error).Error())
 }
 
 func encodeUnsupportedValue(e *Encoder, v reflect.Value) error {
-	return fmt.Errorf("msgpack: Encode(unsupported %s)", v.Type())
+	return fmt.Errorf("ljpack: Encode(unsupported %s)", v.Type())
 }
 
 func nilable(kind reflect.Kind) bool {
@@ -202,14 +202,14 @@ func nilable(kind reflect.Kind) bool {
 
 func marshalBinaryValueAddr(e *Encoder, v reflect.Value) error {
 	if !v.CanAddr() {
-		return fmt.Errorf("msgpack: Encode(non-addressable %T)", v.Interface())
+		return fmt.Errorf("ljpack: Encode(non-addressable %T)", v.Interface())
 	}
 	return marshalBinaryValue(e, v.Addr())
 }
 
 func marshalBinaryValue(e *Encoder, v reflect.Value) error {
 	if nilable(v.Kind()) && v.IsNil() {
-		return e.EncodeNil()
+		return e.EncodeNull()
 	}
 
 	marshaler := v.Interface().(encoding.BinaryMarshaler)
@@ -225,14 +225,14 @@ func marshalBinaryValue(e *Encoder, v reflect.Value) error {
 
 func marshalTextValueAddr(e *Encoder, v reflect.Value) error {
 	if !v.CanAddr() {
-		return fmt.Errorf("msgpack: Encode(non-addressable %T)", v.Interface())
+		return fmt.Errorf("ljpack: Encode(non-addressable %T)", v.Interface())
 	}
 	return marshalTextValue(e, v.Addr())
 }
 
 func marshalTextValue(e *Encoder, v reflect.Value) error {
 	if nilable(v.Kind()) && v.IsNil() {
-		return e.EncodeNil()
+		return e.EncodeNull()
 	}
 
 	marshaler := v.Interface().(encoding.TextMarshaler)

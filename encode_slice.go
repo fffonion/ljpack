@@ -1,10 +1,9 @@
-package msgpack
+package ljpack
 
 import (
-	"math"
 	"reflect"
 
-	"github.com/vmihailenco/msgpack/v5/msgpcode"
+	"github.com/fffonion/ljpack/ljpcode"
 )
 
 var stringSliceType = reflect.TypeOf(([]string)(nil))
@@ -42,26 +41,13 @@ func grow(b []byte, n int) []byte {
 }
 
 func (e *Encoder) EncodeBytesLen(l int) error {
-	if l < 256 {
-		return e.write1(msgpcode.Bin8, uint8(l))
-	}
-	if l <= math.MaxUint16 {
-		return e.write2(msgpcode.Bin16, uint16(l))
-	}
-	return e.write4(msgpcode.Bin32, uint32(l))
+	// TODO: overflow?
+	return e.u124(uint32(l) + 0x20)
 }
 
 func (e *Encoder) encodeStringLen(l int) error {
-	if l < 32 {
-		return e.writeCode(msgpcode.FixedStrLow | byte(l))
-	}
-	if l < 256 {
-		return e.write1(msgpcode.Str8, uint8(l))
-	}
-	if l <= math.MaxUint16 {
-		return e.write2(msgpcode.Str16, uint16(l))
-	}
-	return e.write4(msgpcode.Str32, uint32(l))
+	// TODO: overflow?
+	return e.u124(uint32(l) + 0x20)
 }
 
 func (e *Encoder) EncodeString(v string) error {
@@ -80,8 +66,9 @@ func (e *Encoder) encodeNormalString(v string) error {
 
 func (e *Encoder) EncodeBytes(v []byte) error {
 	if v == nil {
-		return e.EncodeNil()
+		return e.EncodeNull()
 	}
+
 	if err := e.EncodeBytesLen(len(v)); err != nil {
 		return err
 	}
@@ -89,13 +76,12 @@ func (e *Encoder) EncodeBytes(v []byte) error {
 }
 
 func (e *Encoder) EncodeArrayLen(l int) error {
-	if l < 16 {
-		return e.writeCode(msgpcode.FixedArrayLow | byte(l))
+	// TODO: overflow?
+	err := e.writeCode(ljpcode.OneBasedArray)
+	if err != nil {
+		return err
 	}
-	if l <= math.MaxUint16 {
-		return e.write2(msgpcode.Array16, uint16(l))
-	}
-	return e.write4(msgpcode.Array32, uint32(l))
+	return e.u124(uint32(l) + 1)
 }
 
 func encodeStringSliceValue(e *Encoder, v reflect.Value) error {
@@ -105,7 +91,7 @@ func encodeStringSliceValue(e *Encoder, v reflect.Value) error {
 
 func (e *Encoder) encodeStringSlice(s []string) error {
 	if s == nil {
-		return e.EncodeNil()
+		return e.EncodeNull()
 	}
 	if err := e.EncodeArrayLen(len(s)); err != nil {
 		return err
@@ -120,13 +106,18 @@ func (e *Encoder) encodeStringSlice(s []string) error {
 
 func encodeSliceValue(e *Encoder, v reflect.Value) error {
 	if v.IsNil() {
-		return e.EncodeNil()
+		return e.EncodeNull()
 	}
 	return encodeArrayValue(e, v)
 }
 
 func encodeArrayValue(e *Encoder, v reflect.Value) error {
 	l := v.Len()
+
+	if l == 0 {
+		return e.EncodeEmpty()
+	}
+
 	if err := e.EncodeArrayLen(l); err != nil {
 		return err
 	}

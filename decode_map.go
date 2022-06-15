@@ -1,14 +1,14 @@
-package msgpack
+package ljpack
 
 import (
 	"errors"
 	"fmt"
 	"reflect"
 
-	"github.com/vmihailenco/msgpack/v5/msgpcode"
+	"github.com/fffonion/ljpack/ljpcode"
 )
 
-var errArrayStruct = errors.New("msgpack: number of fields in array-encoded struct has changed")
+var errArrayStruct = errors.New("ljpack: number of fields in array-encoded struct has changed")
 
 var (
 	mapStringStringPtrType = reflect.TypeOf((*map[string]string)(nil))
@@ -56,35 +56,17 @@ func (d *Decoder) DecodeMapLen() (int, error) {
 		return 0, err
 	}
 
-	if msgpcode.IsExt(c) {
-		if err = d.skipExtHeader(c); err != nil {
-			return 0, err
-		}
-
-		c, err = d.readCode()
-		if err != nil {
-			return 0, err
-		}
-	}
 	return d.mapLen(c)
 }
 
 func (d *Decoder) mapLen(c byte) (int, error) {
-	if c == msgpcode.Nil {
-		return -1, nil
+	if c == ljpcode.EmptyTable {
+		return 0, nil
 	}
-	if c >= msgpcode.FixedMapLow && c <= msgpcode.FixedMapHigh {
-		return int(c & msgpcode.FixedMapMask), nil
-	}
-	if c == msgpcode.Map16 {
-		size, err := d.uint16()
-		return int(size), err
-	}
-	if c == msgpcode.Map32 {
-		size, err := d.uint32()
-		return int(size), err
-	}
-	return 0, unexpectedCodeError{code: c, hint: "map length"}
+
+	size, err := d.u124()
+	return int(size), err
+	// TODO: mixed not supported yet
 }
 
 func decodeMapStringStringValue(d *Decoder, v reflect.Value) error {
@@ -218,7 +200,7 @@ func (d *Decoder) DecodeTypedMap() (interface{}, error) {
 	valueType := reflect.TypeOf(value)
 
 	if !keyType.Comparable() {
-		return nil, fmt.Errorf("msgpack: unsupported map key: %s", keyType.String())
+		return nil, fmt.Errorf("ljpack: unsupported map key: %s", keyType.String())
 	}
 
 	mapType := reflect.MapOf(keyType, valueType)
@@ -276,14 +258,19 @@ func decodeStructValue(d *Decoder, v reflect.Value) error {
 	if err != nil {
 		return err
 	}
-
-	n, err := d.mapLen(c)
-	if err == nil {
-		return d.decodeStruct(v, n)
+	if c == ljpcode.Hash {
+		n, err := d.mapLen(c)
+		if err == nil {
+			return d.decodeStruct(v, n)
+		}
+		return err
 	}
 
-	var err2 error
-	n, err2 = d.arrayLen(c)
+	if c != ljpcode.OneBasedArray {
+		return fmt.Errorf("ljpack: unknown code=%d when decoding struct", c)
+	}
+
+	n, err2 := d.arrayLen(c)
 	if err2 != nil {
 		return err
 	}
@@ -328,7 +315,7 @@ func (d *Decoder) decodeStruct(v reflect.Value, n int) error {
 		}
 
 		if d.flags&disallowUnknownFieldsFlag != 0 {
-			return fmt.Errorf("msgpack: unknown field %q", name)
+			return fmt.Errorf("ljpack: unknown field %q", name)
 		}
 		if err := d.Skip(); err != nil {
 			return err

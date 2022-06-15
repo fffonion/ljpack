@@ -1,4 +1,4 @@
-package msgpack
+package ljpack
 
 import (
 	"bytes"
@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/vmihailenco/msgpack/v5/msgpcode"
+	"github.com/fffonion/ljpack/ljpcode"
 )
 
 const (
@@ -77,8 +77,8 @@ func Marshal(v interface{}) ([]byte, error) {
 type Encoder struct {
 	w writer
 
-	buf     []byte
-	timeBuf []byte
+	buf []byte
+	//timeBuf []byte
 
 	dict map[string]int
 
@@ -143,7 +143,7 @@ func (e *Encoder) SetSortMapKeys(on bool) *Encoder {
 }
 
 // SetCustomStructTag causes the Encoder to use a custom struct tag as
-// fallback option if there is no msgpack tag.
+// fallback option if there is no ljpack tag.
 func (e *Encoder) SetCustomStructTag(tag string) {
 	e.structTag = tag
 }
@@ -157,7 +157,7 @@ func (e *Encoder) SetOmitEmpty(on bool) {
 	}
 }
 
-// UseArrayEncodedStructs causes the Encoder to encode Go structs as msgpack arrays.
+// UseArrayEncodedStructs causes the Encoder to encode Go structs as ljpack arrays.
 func (e *Encoder) UseArrayEncodedStructs(on bool) {
 	if on {
 		e.flags |= arrayEncodedStructsFlag
@@ -167,7 +167,7 @@ func (e *Encoder) UseArrayEncodedStructs(on bool) {
 }
 
 // UseCompactEncoding causes the Encoder to chose the most compact encoding.
-// For example, it allows to encode small Go int64 as msgpack int8 saving 7 bytes.
+// For example, it allows to encode small Go int64 as ljpack int8 saving 7 bytes.
 func (e *Encoder) UseCompactInts(on bool) {
 	if on {
 		e.flags |= useCompactIntsFlag
@@ -198,7 +198,7 @@ func (e *Encoder) UseInternedStrings(on bool) {
 func (e *Encoder) Encode(v interface{}) error {
 	switch v := v.(type) {
 	case nil:
-		return e.EncodeNil()
+		return e.EncodeNull()
 	case string:
 		return e.EncodeString(v)
 	case []byte:
@@ -206,21 +206,21 @@ func (e *Encoder) Encode(v interface{}) error {
 	case int:
 		return e.EncodeInt(int64(v))
 	case int64:
-		return e.encodeInt64Cond(v)
+		return e.encodeFFIInt64Cond(v)
 	case uint:
-		return e.EncodeUint(uint64(v))
+		return e.EncodeFFIUint(uint64(v))
 	case uint64:
-		return e.encodeUint64Cond(v)
+		return e.encodeFFIUint64Cond(v)
 	case bool:
 		return e.EncodeBool(v)
 	case float32:
-		return e.EncodeFloat32(v)
+		return e.EncodeDouble(float64(v))
 	case float64:
-		return e.EncodeFloat64(v)
+		return e.EncodeDouble(v)
 	case time.Duration:
-		return e.encodeInt64Cond(int64(v))
+		return e.encodeFFIInt64Cond(int64(v))
 	case time.Time:
-		return e.EncodeTime(v)
+		return e.EncodeFFIInt64(v.Unix())
 	}
 	return e.EncodeValue(reflect.ValueOf(v))
 }
@@ -239,15 +239,23 @@ func (e *Encoder) EncodeValue(v reflect.Value) error {
 	return fn(e, v)
 }
 
+func (e *Encoder) EncodeEmpty() error {
+	return e.writeCode(ljpcode.EmptyTable)
+}
+
 func (e *Encoder) EncodeNil() error {
-	return e.writeCode(msgpcode.Nil)
+	return e.writeCode(ljpcode.Nil)
+}
+
+func (e *Encoder) EncodeNull() error {
+	return e.writeCode(ljpcode.Null)
 }
 
 func (e *Encoder) EncodeBool(value bool) error {
 	if value {
-		return e.writeCode(msgpcode.True)
+		return e.writeCode(ljpcode.True)
 	}
-	return e.writeCode(msgpcode.False)
+	return e.writeCode(ljpcode.False)
 }
 
 func (e *Encoder) EncodeDuration(d time.Duration) error {

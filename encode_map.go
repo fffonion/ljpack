@@ -1,16 +1,15 @@
-package msgpack
+package ljpack
 
 import (
-	"math"
 	"reflect"
 	"sort"
 
-	"github.com/vmihailenco/msgpack/v5/msgpcode"
+	"github.com/fffonion/ljpack/ljpcode"
 )
 
 func encodeMapValue(e *Encoder, v reflect.Value) error {
 	if v.IsNil() {
-		return e.EncodeNil()
+		return e.EncodeNull()
 	}
 
 	if err := e.EncodeMapLen(v.Len()); err != nil {
@@ -32,7 +31,7 @@ func encodeMapValue(e *Encoder, v reflect.Value) error {
 
 func encodeMapStringStringValue(e *Encoder, v reflect.Value) error {
 	if v.IsNil() {
-		return e.EncodeNil()
+		return e.EncodeNull()
 	}
 
 	if err := e.EncodeMapLen(v.Len()); err != nil {
@@ -58,7 +57,7 @@ func encodeMapStringStringValue(e *Encoder, v reflect.Value) error {
 
 func encodeMapStringInterfaceValue(e *Encoder, v reflect.Value) error {
 	if v.IsNil() {
-		return e.EncodeNil()
+		return e.EncodeNull()
 	}
 	m := v.Convert(mapStringInterfaceType).Interface().(map[string]interface{})
 	if e.flags&sortMapKeysFlag != 0 {
@@ -69,7 +68,7 @@ func encodeMapStringInterfaceValue(e *Encoder, v reflect.Value) error {
 
 func (e *Encoder) EncodeMap(m map[string]interface{}) error {
 	if m == nil {
-		return e.EncodeNil()
+		return e.EncodeNull()
 	}
 	if err := e.EncodeMapLen(len(m)); err != nil {
 		return err
@@ -87,7 +86,10 @@ func (e *Encoder) EncodeMap(m map[string]interface{}) error {
 
 func (e *Encoder) EncodeMapSorted(m map[string]interface{}) error {
 	if m == nil {
-		return e.EncodeNil()
+		return e.EncodeNull()
+	}
+	if len(m) == 0 {
+		return e.EncodeEmpty()
 	}
 	if err := e.EncodeMapLen(len(m)); err != nil {
 		return err
@@ -134,13 +136,12 @@ func (e *Encoder) encodeSortedMapStringString(m map[string]string) error {
 }
 
 func (e *Encoder) EncodeMapLen(l int) error {
-	if l < 16 {
-		return e.writeCode(msgpcode.FixedMapLow | byte(l))
+	// TODO: overflow?
+	err := e.writeCode(ljpcode.Hash)
+	if err != nil {
+		return err
 	}
-	if l <= math.MaxUint16 {
-		return e.write2(msgpcode.Map16, uint16(l))
-	}
-	return e.write4(msgpcode.Map32, uint32(l))
+	return e.u124(uint32(l))
 }
 
 func encodeStructValue(e *Encoder, strct reflect.Value) error {

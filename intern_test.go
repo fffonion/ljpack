@@ -1,4 +1,4 @@
-package msgpack_test
+package ljpack_test
 
 import (
 	"bytes"
@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/vmihailenco/msgpack/v5"
+	"github.com/fffonion/ljpack"
 )
 
 type NoIntern struct {
@@ -16,18 +16,18 @@ type NoIntern struct {
 }
 
 type Intern struct {
-	A string      `msgpack:",intern"`
-	B string      `msgpack:",intern"`
-	C interface{} `msgpack:",intern"`
+	A string      `ljpack:",intern"`
+	B string      `ljpack:",intern"`
+	C interface{} `ljpack:",intern"`
 }
 
 func TestInternedString(t *testing.T) {
 	var buf bytes.Buffer
 
-	enc := msgpack.NewEncoder(&buf)
+	enc := ljpack.NewEncoder(&buf)
 	enc.UseInternedStrings(true)
 
-	dec := msgpack.NewDecoder(&buf)
+	dec := ljpack.NewDecoder(&buf)
 	dec.UseInternedStrings(true)
 
 	for i := 0; i < 3; i++ {
@@ -54,8 +54,8 @@ func TestInternedString(t *testing.T) {
 
 func TestInternedStringTag(t *testing.T) {
 	var buf bytes.Buffer
-	enc := msgpack.NewEncoder(&buf)
-	dec := msgpack.NewDecoder(&buf)
+	enc := ljpack.NewEncoder(&buf)
+	dec := ljpack.NewDecoder(&buf)
 
 	in := []Intern{
 		{"f", "f", "f"},
@@ -76,8 +76,8 @@ func TestResetDict(t *testing.T) {
 	dict := []string{"hello world", "foo bar"}
 
 	var buf bytes.Buffer
-	enc := msgpack.NewEncoder(&buf)
-	dec := msgpack.NewDecoder(&buf)
+	enc := ljpack.NewEncoder(&buf)
+	dec := ljpack.NewDecoder(&buf)
 
 	{
 		enc.ResetDict(&buf, dictMap(dict))
@@ -117,10 +117,10 @@ func TestMapWithInternedString(t *testing.T) {
 
 	var buf bytes.Buffer
 
-	enc := msgpack.NewEncoder(nil)
+	enc := ljpack.NewEncoder(nil)
 	enc.ResetDict(&buf, dictMap(dict))
 
-	dec := msgpack.NewDecoder(nil)
+	dec := ljpack.NewDecoder(nil)
 	dec.ResetDict(&buf, dict)
 
 	for i := 0; i < 100; i++ {

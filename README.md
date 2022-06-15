@@ -1,81 +1,90 @@
-# MessagePack encoding for Golang
+# LuaJIT string.buffer encoding for Golang
 
-[![Build Status](https://travis-ci.org/vmihailenco/msgpack.svg)](https://travis-ci.org/vmihailenco/msgpack)
-[![PkgGoDev](https://pkg.go.dev/badge/github.com/vmihailenco/msgpack/v5)](https://pkg.go.dev/github.com/vmihailenco/msgpack/v5)
-[![Documentation](https://img.shields.io/badge/msgpack-documentation-informational)](https://msgpack.uptrace.dev/)
-[![Chat](https://discordapp.com/api/guilds/752070105847955518/widget.png)](https://discord.gg/rWtp5Aj)
+[![Build Status](https://travis-ci.org/fffonion/ljpack.svg)](https://travis-ci.org/fffonion/ljpack)
+[![PkgGoDev](https://pkg.go.dev/badge/github.com/fffonion/ljpack)](https://pkg.go.dev/github.com/fffonion/ljpack)
 
-> msgpack is brought to you by :star: [**uptrace/uptrace**](https://github.com/uptrace/uptrace).
-> Uptrace is an open source and blazingly fast
-> [distributed tracing tool](https://get.uptrace.dev/compare/distributed-tracing-tools.html) powered
-> by OpenTelemetry and ClickHouse. Give it a star as well!
 
 ## Resources
 
-- [Documentation](https://msgpack.uptrace.dev)
-- [Chat](https://discord.gg/rWtp5Aj)
-- [Reference](https://pkg.go.dev/github.com/vmihailenco/msgpack/v5)
-- [Examples](https://pkg.go.dev/github.com/vmihailenco/msgpack/v5#pkg-examples)
+- [Reference](https://pkg.go.dev/github.com/fffonion/ljpack)
+- [Examples](https://pkg.go.dev/github.com/fffonion/ljpack#pkg-examples)
+
+## Notes
+
+The encoding format for LuaJIT string.buffer is not a formalized structure, the format
+could change at any time. Thus use this project with your own risk.
+
+Supported:
+
+- nil, false, true, userdata NULL
+- int (int32), double (float64)
+- Empty table, hash, 0-based array, 1-based array
+- FFI int64, uint64, complex
+- string
+
+Work in Progress:
+
+- lightud32, lightud64
+- Mixed table, Metatable dict entry
+- String dict entry
 
 ## Features
 
 - Primitives, arrays, maps, structs, time.Time and interface{}.
 - Appengine \*datastore.Key and datastore.Cursor.
 - [CustomEncoder]/[CustomDecoder] interfaces for custom encoding.
-- [Extensions](https://pkg.go.dev/github.com/vmihailenco/msgpack/v5#example-RegisterExt) to encode
-  type information.
-- Renaming fields via `msgpack:"my_field_name"` and alias via `msgpack:"alias:another_name"`.
-- Omitting individual empty fields via `msgpack:",omitempty"` tag or all
-  [empty fields in a struct](https://pkg.go.dev/github.com/vmihailenco/msgpack/v5#example-Marshal-OmitEmpty).
-- [Map keys sorting](https://pkg.go.dev/github.com/vmihailenco/msgpack/v5#Encoder.SetSortMapKeys).
+- Renaming fields via `ljpack:"my_field_name"` and alias via `ljpack:"alias:another_name"`.
+- Omitting individual empty fields via `ljpack:",omitempty"` tag or all
+  [empty fields in a struct](https://pkg.go.dev/github.com/fffonion/ljpack#example-Marshal-OmitEmpty).
+- [Map keys sorting](https://pkg.go.dev/github.com/fffonion/ljpack#Encoder.SetSortMapKeys).
 - Encoding/decoding all
-  [structs as arrays](https://pkg.go.dev/github.com/vmihailenco/msgpack/v5#Encoder.UseArrayEncodedStructs)
+  [structs as arrays](https://pkg.go.dev/github.com/fffonion/ljpack#Encoder.UseArrayEncodedStructs)
   or
-  [individual structs](https://pkg.go.dev/github.com/vmihailenco/msgpack/v5#example-Marshal-AsArray).
-- [Encoder.SetCustomStructTag] with [Decoder.SetCustomStructTag] can turn msgpack into drop-in
+  [individual structs](https://pkg.go.dev/github.com/fffonion/ljpack#example-Marshal-AsArray).
+- [Encoder.SetCustomStructTag] with [Decoder.SetCustomStructTag] can turn ljpack into drop-in
   replacement for any tag.
 - Simple but very fast and efficient
-  [queries](https://pkg.go.dev/github.com/vmihailenco/msgpack/v5#example-Decoder.Query).
+  [queries](https://pkg.go.dev/github.com/fffonion/ljpack#example-Decoder.Query).
 
-[customencoder]: https://pkg.go.dev/github.com/vmihailenco/msgpack/v5#CustomEncoder
-[customdecoder]: https://pkg.go.dev/github.com/vmihailenco/msgpack/v5#CustomDecoder
+[customencoder]: https://pkg.go.dev/github.com/fffonion/ljpack#CustomEncoder
+[customdecoder]: https://pkg.go.dev/github.com/fffonion/ljpack#CustomDecoder
 [encoder.setcustomstructtag]:
-  https://pkg.go.dev/github.com/vmihailenco/msgpack/v5#Encoder.SetCustomStructTag
+  https://pkg.go.dev/github.com/fffonion/ljpack#Encoder.SetCustomStructTag
 [decoder.setcustomstructtag]:
-  https://pkg.go.dev/github.com/vmihailenco/msgpack/v5#Decoder.SetCustomStructTag
+  https://pkg.go.dev/github.com/fffonion/ljpack#Decoder.SetCustomStructTag
 
 ## Installation
 
-msgpack supports 2 last Go versions and requires support for
+ljpack supports 2 last Go versions and requires support for
 [Go modules](https://github.com/golang/go/wiki/Modules). So make sure to initialize a Go module:
 
 ```shell
 go mod init github.com/my/repo
 ```
 
-And then install msgpack/v5 (note _v5_ in the import; omitting it is a popular mistake):
+And then install ljpack:
 
 ```shell
-go get github.com/vmihailenco/msgpack/v5
+go get github.com/fffonion/ljpack
 ```
 
 ## Quickstart
 
 ```go
-import "github.com/vmihailenco/msgpack/v5"
+import "github.com/fffonion/ljpack"
 
 func ExampleMarshal() {
     type Item struct {
         Foo string
     }
 
-    b, err := msgpack.Marshal(&Item{Foo: "bar"})
+    b, err := ljpack.Marshal(&Item{Foo: "bar"})
     if err != nil {
         panic(err)
     }
 
     var item Item
-    err = msgpack.Unmarshal(b, &item)
+    err = ljpack.Unmarshal(b, &item)
     if err != nil {
         panic(err)
     }
@@ -84,17 +93,7 @@ func ExampleMarshal() {
 }
 ```
 
-## See also
+## Credits
 
-- [Golang ORM](https://github.com/uptrace/bun) for PostgreSQL, MySQL, MSSQL, and SQLite
-- [Golang PostgreSQL](https://bun.uptrace.dev/postgres/)
-- [Golang HTTP router](https://github.com/uptrace/bunrouter)
-- [Golang ClickHouse ORM](https://github.com/uptrace/go-clickhouse)
+- Forked from https://github.com/vmihailenco/msgpack
 
-## Contributors
-
-Thanks to all the people who already contributed!
-
-<a href="https://github.com/vmihailenco/msgpack/graphs/contributors">
-  <img src="https://contributors-img.web.app/image?repo=vmihailenco/msgpack" />
-</a>

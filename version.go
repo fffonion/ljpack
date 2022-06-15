@@ -1,4 +1,4 @@
-package msgpack
+package ljpack
 
 // Version is the current release version.
 func Version() string {

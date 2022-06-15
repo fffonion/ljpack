@@ -1,10 +1,10 @@
-package msgpack_test
+package ljpack_test
 
 import (
 	"bytes"
 	"fmt"
 
-	"github.com/vmihailenco/msgpack/v5"
+	"github.com/fffonion/ljpack"
 )
 
 func ExampleMarshal() {
@@ -12,13 +12,13 @@ func ExampleMarshal() {
 		Foo string
 	}
 
-	b, err := msgpack.Marshal(&Item{Foo: "bar"})
+	b, err := ljpack.Marshal(&Item{Foo: "bar"})
 	if err != nil {
 		panic(err)
 	}
 
 	var item Item
-	err = msgpack.Unmarshal(b, &item)
+	err = ljpack.Unmarshal(b, &item)
 	if err != nil {
 		panic(err)
 	}
@@ -28,13 +28,13 @@ func ExampleMarshal() {
 
 func ExampleMarshal_mapStringInterface() {
 	in := map[string]interface{}{"foo": 1, "hello": "world"}
-	b, err := msgpack.Marshal(in)
+	b, err := ljpack.Marshal(in)
 	if err != nil {
 		panic(err)
 	}
 
 	var out map[string]interface{}
-	err = msgpack.Unmarshal(b, &out)
+	err = ljpack.Unmarshal(b, &out)
 	if err != nil {
 		panic(err)
 	}
@@ -50,17 +50,17 @@ func ExampleMarshal_mapStringInterface() {
 func ExampleDecoder_SetMapDecoder() {
 	buf := new(bytes.Buffer)
 
-	enc := msgpack.NewEncoder(buf)
+	enc := ljpack.NewEncoder(buf)
 	in := map[string]string{"hello": "world"}
 	err := enc.Encode(in)
 	if err != nil {
 		panic(err)
 	}
 
-	dec := msgpack.NewDecoder(buf)
+	dec := ljpack.NewDecoder(buf)
 
 	// Causes decoder to produce map[string]string instead of map[string]interface{}.
-	dec.SetMapDecoder(func(d *msgpack.Decoder) (interface{}, error) {
+	dec.SetMapDecoder(func(d *ljpack.Decoder) (interface{}, error) {
 		n, err := d.DecodeMapLen()
 		if err != nil {
 			return nil, err
@@ -92,7 +92,7 @@ func ExampleDecoder_SetMapDecoder() {
 }
 
 func ExampleDecoder_Query() {
-	b, err := msgpack.Marshal([]map[string]interface{}{
+	b, err := ljpack.Marshal([]map[string]interface{}{
 		{"id": 1, "attrs": map[string]interface{}{"phone": 12345}},
 		{"id": 2, "attrs": map[string]interface{}{"phone": 54321}},
 	})
@@ -100,7 +100,7 @@ func ExampleDecoder_Query() {
 		panic(err)
 	}
 
-	dec := msgpack.NewDecoder(bytes.NewBuffer(b))
+	dec := ljpack.NewDecoder(bytes.NewBuffer(b))
 	values, err := dec.Query("*.attrs.phone")
 	if err != nil {
 		panic(err)
@@ -124,7 +124,7 @@ func ExampleEncoder_UseArrayEncodedStructs() {
 	}
 
 	var buf bytes.Buffer
-	enc := msgpack.NewEncoder(&buf)
+	enc := ljpack.NewEncoder(&buf)
 	enc.UseArrayEncodedStructs(true)
 
 	err := enc.Encode(&Item{Foo: "foo", Bar: "bar"})
@@ -132,7 +132,7 @@ func ExampleEncoder_UseArrayEncodedStructs() {
 		panic(err)
 	}
 
-	dec := msgpack.NewDecoder(&buf)
+	dec := ljpack.NewDecoder(&buf)
 	v, err := dec.DecodeInterface()
 	if err != nil {
 		panic(err)
@@ -143,19 +143,19 @@ func ExampleEncoder_UseArrayEncodedStructs() {
 
 func ExampleMarshal_asArray() {
 	type Item struct {
-		_msgpack struct{} `msgpack:",as_array"`
+		_ljpack struct{} `ljpack:",as_array"`
 		Foo      string
 		Bar      string
 	}
 
 	var buf bytes.Buffer
-	enc := msgpack.NewEncoder(&buf)
+	enc := ljpack.NewEncoder(&buf)
 	err := enc.Encode(&Item{Foo: "foo", Bar: "bar"})
 	if err != nil {
 		panic(err)
 	}
 
-	dec := msgpack.NewDecoder(&buf)
+	dec := ljpack.NewDecoder(&buf)
 	v, err := dec.DecodeInterface()
 	if err != nil {
 		panic(err)
@@ -173,14 +173,14 @@ func ExampleMarshal_omitEmpty() {
 	item := &Item{
 		Foo: "hello",
 	}
-	b, err := msgpack.Marshal(item)
+	b, err := ljpack.Marshal(item)
 	if err != nil {
 		panic(err)
 	}
 	fmt.Printf("item: %q\n", b)
 
 	type ItemOmitEmpty struct {
-		_msgpack struct{} `msgpack:",omitempty"`
+		_ljpack struct{} `ljpack:",omitempty"`
 		Foo      string
 		Bar      string
 	}
@@ -188,7 +188,7 @@ func ExampleMarshal_omitEmpty() {
 	itemOmitEmpty := &ItemOmitEmpty{
 		Foo: "hello",
 	}
-	b, err = msgpack.Marshal(itemOmitEmpty)
+	b, err = ljpack.Marshal(itemOmitEmpty)
 	if err != nil {
 		panic(err)
 	}
@@ -203,19 +203,19 @@ func ExampleMarshal_escapedNames() {
 		"something:special": uint(123),
 		"hello, world":      "hello!",
 	}
-	raw, err := msgpack.Marshal(og)
+	raw, err := ljpack.Marshal(og)
 	if err != nil {
 		panic(err)
 	}
 
 	type Item struct {
-		SomethingSpecial uint   `msgpack:"'something:special'"`
-		HelloWorld       string `msgpack:"'hello, world'"`
+		SomethingSpecial uint   `ljpack:"'something:special'"`
+		HelloWorld       string `ljpack:"'hello, world'"`
 	}
 	var item Item
-	if err := msgpack.Unmarshal(raw, &item); err != nil {
+	if err := ljpack.Unmarshal(raw, &item); err != nil {
 		panic(err)
 	}
 	fmt.Printf("%#v\n", item)
-	//output: msgpack_test.Item{SomethingSpecial:0x7b, HelloWorld:"hello!"}
+	//output: ljpack_test.Item{SomethingSpecial:0x7b, HelloWorld:"hello!"}
 }

@@ -1,4 +1,4 @@
-package msgpack
+package ljpack
 
 import (
 	"encoding"
@@ -57,7 +57,7 @@ func Register(value interface{}, enc encoderFunc, dec decoderFunc) {
 
 //------------------------------------------------------------------------------
 
-const defaultStructTag = "msgpack"
+const defaultStructTag = "ljpack"
 
 var structs = newStructCache()
 
@@ -148,7 +148,7 @@ func (fs *fields) Add(field *field) {
 
 func (fs *fields) warnIfFieldExists(name string) {
 	if _, ok := fs.Map[name]; ok {
-		log.Printf("msgpack: %s already has field=%s", fs.Type, name)
+		log.Printf("ljpack: %s already has field=%s", fs.Type, name)
 	}
 }
 
@@ -185,7 +185,7 @@ func getFields(typ reflect.Type, fallbackTag string) *fields {
 			continue
 		}
 
-		if f.Name == "_msgpack" {
+		if f.Name == "_ljpack" {
 			fs.AsArray = tag.HasOption("as_array") || tag.HasOption("asArray")
 			if tag.HasOption("omitempty") {
 				omitEmpty = true
@@ -211,7 +211,7 @@ func getFields(typ reflect.Type, fallbackTag string) *fields {
 				field.encoder = encodeInternedStringValue
 				field.decoder = decodeInternedStringValue
 			default:
-				err := fmt.Errorf("msgpack: intern strings are not supported on %s", f.Type)
+				err := fmt.Errorf("ljpack: intern strings are not supported on %s", f.Type)
 				panic(err)
 			}
 		} else {
@@ -233,7 +233,7 @@ func getFields(typ reflect.Type, fallbackTag string) *fields {
 
 			if inline {
 				if _, ok := fs.Map[field.name]; ok {
-					log.Printf("msgpack: %s already has field=%s", fs.Type, field.name)
+					log.Printf("ljpack: %s already has field=%s", fs.Type, field.name)
 				}
 				fs.Map[field.name] = field
 				continue

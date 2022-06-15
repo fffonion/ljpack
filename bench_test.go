@@ -1,4 +1,4 @@
-package msgpack_test
+package ljpack_test
 
 import (
 	"bytes"
@@ -8,11 +8,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/vmihailenco/msgpack/v5"
+	"github.com/fffonion/ljpack"
 )
 
 func BenchmarkDiscard(b *testing.B) {
-	enc := msgpack.NewEncoder(ioutil.Discard)
+	enc := ljpack.NewEncoder(ioutil.Discard)
 
 	b.ResetTimer()
 
@@ -28,8 +28,8 @@ func BenchmarkDiscard(b *testing.B) {
 
 func benchmarkEncodeDecode(b *testing.B, src, dst interface{}) {
 	var buf bytes.Buffer
-	enc := msgpack.NewEncoder(&buf)
-	dec := msgpack.NewDecoder(&buf)
+	enc := ljpack.NewEncoder(&buf)
+	dec := ljpack.NewDecoder(&buf)
 
 	b.ResetTimer()
 
@@ -161,7 +161,7 @@ func BenchmarkMapStringStringPtr(b *testing.B) {
 	benchmarkEncodeDecode(b, src, &dst)
 }
 
-func BenchmarkMapStringInterfaceMsgpack(b *testing.B) {
+func BenchmarkMapStringInterfaceljpack(b *testing.B) {
 	src := map[string]interface{}{
 		"hello": "world",
 		"foo":   "bar",
@@ -224,11 +224,11 @@ type benchmarkStruct2 struct {
 }
 
 var (
-	_ msgpack.CustomEncoder = (*benchmarkStruct2)(nil)
-	_ msgpack.CustomDecoder = (*benchmarkStruct2)(nil)
+	_ ljpack.CustomEncoder = (*benchmarkStruct2)(nil)
+	_ ljpack.CustomDecoder = (*benchmarkStruct2)(nil)
 )
 
-func (s *benchmarkStruct2) EncodeMsgpack(enc *msgpack.Encoder) error {
+func (s *benchmarkStruct2) Encodeljpack(enc *ljpack.Encoder) error {
 	return enc.EncodeMulti(
 		s.Name,
 		s.Colors,
@@ -239,7 +239,7 @@ func (s *benchmarkStruct2) EncodeMsgpack(enc *msgpack.Encoder) error {
 	)
 }
 
-func (s *benchmarkStruct2) DecodeMsgpack(dec *msgpack.Decoder) error {
+func (s *benchmarkStruct2) Decodeljpack(dec *ljpack.Decoder) error {
 	return dec.DecodeMulti(
 		&s.Name,
 		&s.Colors,
@@ -272,19 +272,19 @@ func structForBenchmark2() *benchmarkStruct2 {
 	}
 }
 
-func BenchmarkStructVmihailencoMsgpack(b *testing.B) {
+func BenchmarkStructVmihailencoljpack(b *testing.B) {
 	in := structForBenchmark()
 	out := new(benchmarkStruct)
 
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		buf, err := msgpack.Marshal(in)
+		buf, err := ljpack.Marshal(in)
 		if err != nil {
 			b.Fatal(err)
 		}
 
-		err = msgpack.Unmarshal(buf, out)
+		err = ljpack.Unmarshal(buf, out)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -297,7 +297,7 @@ func BenchmarkStructMarshal(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		_, err := msgpack.Marshal(in)
+		_, err := ljpack.Marshal(in)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -306,7 +306,7 @@ func BenchmarkStructMarshal(b *testing.B) {
 
 func BenchmarkStructUnmarshal(b *testing.B) {
 	in := structForBenchmark()
-	buf, err := msgpack.Marshal(in)
+	buf, err := ljpack.Marshal(in)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -315,7 +315,7 @@ func BenchmarkStructUnmarshal(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		err = msgpack.Unmarshal(buf, out)
+		err = ljpack.Unmarshal(buf, out)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -329,12 +329,12 @@ func BenchmarkStructManual(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		buf, err := msgpack.Marshal(in)
+		buf, err := ljpack.Marshal(in)
 		if err != nil {
 			b.Fatal(err)
 		}
 
-		err = msgpack.Unmarshal(buf, out)
+		err = ljpack.Unmarshal(buf, out)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -348,7 +348,7 @@ type benchmarkStructPartially struct {
 
 func BenchmarkStructUnmarshalPartially(b *testing.B) {
 	in := structForBenchmark()
-	buf, err := msgpack.Marshal(in)
+	buf, err := ljpack.Marshal(in)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -357,7 +357,7 @@ func BenchmarkStructUnmarshalPartially(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		err = msgpack.Unmarshal(buf, out)
+		err = ljpack.Unmarshal(buf, out)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -374,12 +374,12 @@ func BenchmarkQuery(b *testing.B) {
 		records = append(records, record)
 	}
 
-	bs, err := msgpack.Marshal(records)
+	bs, err := ljpack.Marshal(records)
 	if err != nil {
 		b.Fatal(err)
 	}
 
-	dec := msgpack.NewDecoder(bytes.NewBuffer(bs))
+	dec := ljpack.NewDecoder(bytes.NewBuffer(bs))
 
 	b.ResetTimer()
 

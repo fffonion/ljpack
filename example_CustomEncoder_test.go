@@ -1,9 +1,9 @@
-package msgpack_test
+package ljpack_test
 
 import (
 	"fmt"
 
-	"github.com/vmihailenco/msgpack/v5"
+	"github.com/fffonion/ljpack"
 )
 
 type customStruct struct {
@@ -11,28 +11,28 @@ type customStruct struct {
 	N int
 }
 
-var _ msgpack.CustomEncoder = (*customStruct)(nil)
-var _ msgpack.CustomDecoder = (*customStruct)(nil)
+var _ ljpack.CustomEncoder = (*customStruct)(nil)
+var _ ljpack.CustomDecoder = (*customStruct)(nil)
 
-func (s *customStruct) EncodeMsgpack(enc *msgpack.Encoder) error {
+func (s *customStruct) EncodeMsgpack(enc *ljpack.Encoder) error {
 	return enc.EncodeMulti(s.S, s.N)
 }
 
-func (s *customStruct) DecodeMsgpack(dec *msgpack.Decoder) error {
+func (s *customStruct) DecodeMsgpack(dec *ljpack.Decoder) error {
 	return dec.DecodeMulti(&s.S, &s.N)
 }
 
 func ExampleCustomEncoder() {
-	b, err := msgpack.Marshal(&customStruct{S: "hello", N: 42})
+	b, err := ljpack.Marshal(&customStruct{S: "hello", N: 42})
 	if err != nil {
 		panic(err)
 	}
 
 	var v customStruct
-	err = msgpack.Unmarshal(b, &v)
+	err = ljpack.Unmarshal(b, &v)
 	if err != nil {
 		panic(err)
 	}
 	fmt.Printf("%#v", v)
-	// Output: msgpack_test.customStruct{S:"hello", N:42}
+	// Output: ljpack_test.customStruct{S:"hello", N:42}
 }

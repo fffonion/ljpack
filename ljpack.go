@@ -1,21 +1,21 @@
-package msgpack
+package ljpack
 
 import "fmt"
 
 type Marshaler interface {
-	MarshalMsgpack() ([]byte, error)
+	MarshalLJpack() ([]byte, error)
 }
 
 type Unmarshaler interface {
-	UnmarshalMsgpack([]byte) error
+	UnmarshalLJpack([]byte) error
 }
 
 type CustomEncoder interface {
-	EncodeMsgpack(*Encoder) error
+	EncodeLJpack(*Encoder) error
 }
 
 type CustomDecoder interface {
-	DecodeMsgpack(*Decoder) error
+	DecodeLJpack(*Decoder) error
 }
 
 //------------------------------------------------------------------------------
@@ -27,11 +27,11 @@ var (
 	_ CustomDecoder = (*RawMessage)(nil)
 )
 
-func (m RawMessage) EncodeMsgpack(enc *Encoder) error {
+func (m RawMessage) EncodeLJpack(enc *Encoder) error {
 	return enc.write(m)
 }
 
-func (m *RawMessage) DecodeMsgpack(dec *Decoder) error {
+func (m *RawMessage) DecodeLJpack(dec *Decoder) error {
 	msg, err := dec.DecodeRaw()
 	if err != nil {
 		return err
@@ -48,5 +48,5 @@ type unexpectedCodeError struct {
 }
 
 func (err unexpectedCodeError) Error() string {
-	return fmt.Sprintf("msgpack: unexpected code=%x decoding %s", err.code, err.hint)
+	return fmt.Sprintf("ljpack: unexpected code=%x decoding %s", err.code, err.hint)
 }

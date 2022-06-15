@@ -1,4 +1,4 @@
-package msgpack
+package ljpack
 
 import (
 	"encoding"
@@ -18,20 +18,20 @@ var valueDecoders []decoderFunc
 func init() {
 	valueDecoders = []decoderFunc{
 		reflect.Bool:          decodeBoolValue,
-		reflect.Int:           decodeInt64Value,
-		reflect.Int8:          decodeInt64Value,
-		reflect.Int16:         decodeInt64Value,
-		reflect.Int32:         decodeInt64Value,
-		reflect.Int64:         decodeInt64Value,
-		reflect.Uint:          decodeUint64Value,
-		reflect.Uint8:         decodeUint64Value,
-		reflect.Uint16:        decodeUint64Value,
-		reflect.Uint32:        decodeUint64Value,
-		reflect.Uint64:        decodeUint64Value,
-		reflect.Float32:       decodeFloat32Value,
-		reflect.Float64:       decodeFloat64Value,
-		reflect.Complex64:     decodeUnsupportedValue,
-		reflect.Complex128:    decodeUnsupportedValue,
+		reflect.Int:           decodeFFIInt64Value,
+		reflect.Int8:          decodeFFIInt64Value,
+		reflect.Int16:         decodeFFIInt64Value,
+		reflect.Int32:         decodeFFIInt64Value,
+		reflect.Int64:         decodeFFIInt64Value,
+		reflect.Uint:          decodeFFIUint64Value,
+		reflect.Uint8:         decodeFFIUint64Value,
+		reflect.Uint16:        decodeFFIUint64Value,
+		reflect.Uint32:        decodeFFIUint64Value,
+		reflect.Uint64:        decodeFFIUint64Value,
+		reflect.Float32:       decodeDoubleValue,
+		reflect.Float64:       decodeDoubleValue,
+		reflect.Complex64:     decodeFFIComplexValue,
+		reflect.Complex128:    decodeFFIComplexValue,
 		reflect.Array:         decodeArrayValue,
 		reflect.Chan:          decodeUnsupportedValue,
 		reflect.Func:          decodeUnsupportedValue,
@@ -125,11 +125,11 @@ func _getDecoder(typ reflect.Type) decoderFunc {
 func ptrValueDecoder(typ reflect.Type) decoderFunc {
 	decoder := getDecoder(typ.Elem())
 	return func(d *Decoder, v reflect.Value) error {
-		if d.hasNilCode() {
+		if d.hasNullCode() {
 			if !v.IsNil() {
 				v.Set(reflect.Zero(v.Type()))
 			}
-			return d.DecodeNil()
+			return d.DecodeNull()
 		}
 		if v.IsNil() {
 			v.Set(reflect.New(v.Type().Elem()))
@@ -141,7 +141,7 @@ func ptrValueDecoder(typ reflect.Type) decoderFunc {
 func addrDecoder(fn decoderFunc) decoderFunc {
 	return func(d *Decoder, v reflect.Value) error {
 		if !v.CanAddr() {
-			return fmt.Errorf("msgpack: Decode(nonaddressable %T)", v.Interface())
+			return fmt.Errorf("ljpack: Decode(nonaddressable %T)", v.Interface())
 		}
 		return fn(d, v.Addr())
 	}
@@ -150,8 +150,8 @@ func addrDecoder(fn decoderFunc) decoderFunc {
 func nilAwareDecoder(typ reflect.Type, fn decoderFunc) decoderFunc {
 	if nilable(typ.Kind()) {
 		return func(d *Decoder, v reflect.Value) error {
-			if d.hasNilCode() {
-				return d.decodeNilValue(v)
+			if d.hasNullCode() {
+				return d.decodeNullValue(v)
 			}
 			if v.IsNil() {
 				v.Set(reflect.New(v.Type().Elem()))
@@ -161,8 +161,8 @@ func nilAwareDecoder(typ reflect.Type, fn decoderFunc) decoderFunc {
 	}
 
 	return func(d *Decoder, v reflect.Value) error {
-		if d.hasNilCode() {
-			return d.decodeNilValue(v)
+		if d.hasNullCode() {
+			return d.decodeNullValue(v)
 		}
 		return fn(d, v)
 	}
@@ -205,14 +205,14 @@ func (d *Decoder) interfaceValue(v reflect.Value) error {
 }
 
 func decodeUnsupportedValue(d *Decoder, v reflect.Value) error {
-	return fmt.Errorf("msgpack: Decode(unsupported %s)", v.Type())
+	return fmt.Errorf("ljpack: Decode(unsupported %s)", v.Type())
 }
 
 //------------------------------------------------------------------------------
 
 func decodeCustomValue(d *Decoder, v reflect.Value) error {
 	decoder := v.Interface().(CustomDecoder)
-	return decoder.DecodeMsgpack(d)
+	return decoder.DecodeLJpack(d)
 }
 
 func unmarshalValue(d *Decoder, v reflect.Value) error {
@@ -226,7 +226,7 @@ func unmarshalValue(d *Decoder, v reflect.Value) error {
 	d.rec = nil
 
 	unmarshaler := v.Interface().(Unmarshaler)
-	return unmarshaler.UnmarshalMsgpack(b)
+	return unmarshaler.UnmarshalLJpack(b)
 }
 
 func unmarshalBinaryValue(d *Decoder, v reflect.Value) error {
