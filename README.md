@@ -20,13 +20,16 @@ Supported:
 - int (int32), double (float64)
 - Empty table, hash, 0-based array, 1-based array
 - FFI int64, uint64, complex
-- string
+- string, interned string
 
 Work in Progress:
 
 - lightud32, lightud64
 - Mixed table, Metatable dict entry
-- String dict entry
+
+Not supported
+
+- Non-string value as hash keys
 
 ## Features
 

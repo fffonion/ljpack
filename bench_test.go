@@ -228,7 +228,7 @@ var (
 	_ ljpack.CustomDecoder = (*benchmarkStruct2)(nil)
 )
 
-func (s *benchmarkStruct2) Encodeljpack(enc *ljpack.Encoder) error {
+func (s *benchmarkStruct2) EncodeLJpack(enc *ljpack.Encoder) error {
 	return enc.EncodeMulti(
 		s.Name,
 		s.Colors,
@@ -239,7 +239,7 @@ func (s *benchmarkStruct2) Encodeljpack(enc *ljpack.Encoder) error {
 	)
 }
 
-func (s *benchmarkStruct2) Decodeljpack(dec *ljpack.Decoder) error {
+func (s *benchmarkStruct2) DecodeLJpack(dec *ljpack.Decoder) error {
 	return dec.DecodeMulti(
 		&s.Name,
 		&s.Colors,
@@ -272,7 +272,7 @@ func structForBenchmark2() *benchmarkStruct2 {
 	}
 }
 
-func BenchmarkStructVmihailencoljpack(b *testing.B) {
+func BenchmarkStructLJpack(b *testing.B) {
 	in := structForBenchmark()
 	out := new(benchmarkStruct)
 

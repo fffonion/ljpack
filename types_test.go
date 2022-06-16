@@ -242,9 +242,9 @@ type encoderTest struct {
 }
 
 var encoderTests = []encoderTest{
-	{nil, "c0"},
+	{nil, "03"},
 
-	{[]byte(nil), "c0"},
+	{[]byte(nil), "03"},
 	{[]byte{1, 2, 3}, "c403010203"},
 	{[3]byte{1, 2, 3}, "c403010203"},
 

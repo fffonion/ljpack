@@ -195,11 +195,26 @@ func (e *Encoder) UseInternedStrings(on bool) {
 	}
 }
 
-func (e *Encoder) Encode(v interface{}) error {
+func (e *Encoder) Encode(vv ...interface{}) error {
+	var noIntern bool
+	if len(vv) == 0 {
+		return e.EncodeNull()
+	} else if len(vv) > 1 {
+		noInternB, ok := vv[1].(bool)
+		if ok {
+			noIntern = noInternB
+		}
+	}
+
+	v := vv[0]
+
 	switch v := v.(type) {
 	case nil:
 		return e.EncodeNull()
 	case string:
+		if noIntern {
+			return e.encodeNormalString(v)
+		}
 		return e.EncodeString(v)
 	case []byte:
 		return e.EncodeBytes(v)
@@ -225,6 +240,10 @@ func (e *Encoder) Encode(v interface{}) error {
 	return e.EncodeValue(reflect.ValueOf(v))
 }
 
+func (e *Encoder) EncodeNoIntern(v interface{}) error {
+	return e.Encode(v, true) // true: noIntern
+}
+
 func (e *Encoder) EncodeMulti(v ...interface{}) error {
 	for _, vv := range v {
 		if err := e.Encode(vv); err != nil {
@@ -237,6 +256,13 @@ func (e *Encoder) EncodeMulti(v ...interface{}) error {
 func (e *Encoder) EncodeValue(v reflect.Value) error {
 	fn := getEncoder(v.Type())
 	return fn(e, v)
+}
+
+func (e *Encoder) EncodeValueNoIntern(v reflect.Value) error {
+	if v.Kind() == reflect.String {
+		return e.encodeNormalString(v.String())
+	}
+	return e.EncodeValue(v)
 }
 
 func (e *Encoder) EncodeEmpty() error {

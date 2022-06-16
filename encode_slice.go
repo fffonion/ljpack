@@ -97,7 +97,7 @@ func (e *Encoder) encodeStringSlice(s []string) error {
 		return err
 	}
 	for _, v := range s {
-		if err := e.EncodeString(v); err != nil {
+		if err := e.encodeNormalString(v); err != nil {
 			return err
 		}
 	}

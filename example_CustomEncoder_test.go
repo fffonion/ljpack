@@ -14,11 +14,11 @@ type customStruct struct {
 var _ ljpack.CustomEncoder = (*customStruct)(nil)
 var _ ljpack.CustomDecoder = (*customStruct)(nil)
 
-func (s *customStruct) EncodeMsgpack(enc *ljpack.Encoder) error {
+func (s *customStruct) EncodeLJpack(enc *ljpack.Encoder) error {
 	return enc.EncodeMulti(s.S, s.N)
 }
 
-func (s *customStruct) DecodeMsgpack(dec *ljpack.Decoder) error {
+func (s *customStruct) DecodeLJpack(dec *ljpack.Decoder) error {
 	return dec.DecodeMulti(&s.S, &s.N)
 }
 

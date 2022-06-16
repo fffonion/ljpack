@@ -21,7 +21,8 @@ func encodeMapValue(e *Encoder, v reflect.Value) error {
 		if err := e.EncodeValue(iter.Key()); err != nil {
 			return err
 		}
-		if err := e.EncodeValue(iter.Value()); err != nil {
+		// ljpack value can't be interned string, use EncodeValueNoIntern
+		if err := e.EncodeValueNoIntern(iter.Value()); err != nil {
 			return err
 		}
 	}
@@ -47,7 +48,8 @@ func encodeMapStringStringValue(e *Encoder, v reflect.Value) error {
 		if err := e.EncodeString(mk); err != nil {
 			return err
 		}
-		if err := e.EncodeString(mv); err != nil {
+		// ljpack value can't be interned string, use encodeNormalString
+		if err := e.encodeNormalString(mv); err != nil {
 			return err
 		}
 	}
@@ -77,7 +79,8 @@ func (e *Encoder) EncodeMap(m map[string]interface{}) error {
 		if err := e.EncodeString(mk); err != nil {
 			return err
 		}
-		if err := e.Encode(mv); err != nil {
+		// ljpack value can't be interned string, use EncodeNoIntern
+		if err := e.EncodeNoIntern(mv); err != nil {
 			return err
 		}
 	}
@@ -107,7 +110,8 @@ func (e *Encoder) EncodeMapSorted(m map[string]interface{}) error {
 		if err := e.EncodeString(k); err != nil {
 			return err
 		}
-		if err := e.Encode(m[k]); err != nil {
+		// ljpack value can't be interned string, use EncodeNoIntern
+		if err := e.EncodeNoIntern(m[k]); err != nil {
 			return err
 		}
 	}
@@ -127,7 +131,8 @@ func (e *Encoder) encodeSortedMapStringString(m map[string]string) error {
 		if err != nil {
 			return err
 		}
-		if err = e.EncodeString(m[k]); err != nil {
+		// ljpack value can't be interned string, use encodeNormalString
+		if err = e.encodeNormalString(m[k]); err != nil {
 			return err
 		}
 	}
@@ -159,7 +164,8 @@ func encodeStructValue(e *Encoder, strct reflect.Value) error {
 		if err := e.EncodeString(f.name); err != nil {
 			return err
 		}
-		if err := f.EncodeValue(e, strct); err != nil {
+		// ljpack value can't be interned string, use EncodeValueNoIntern
+		if err := f.EncodeValueNoIntern(e, strct); err != nil {
 			return err
 		}
 	}
@@ -172,7 +178,8 @@ func encodeStructValueAsArray(e *Encoder, strct reflect.Value, fields []*field) 
 		return err
 	}
 	for _, f := range fields {
-		if err := f.EncodeValue(e, strct); err != nil {
+		// ljpack value can't be interned string, use EncodeValueNoIntern
+		if err := f.EncodeValueNoIntern(e, strct); err != nil {
 			return err
 		}
 	}

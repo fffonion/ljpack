@@ -91,6 +91,14 @@ func (d *Decoder) decodeMapStringStringPtr(ptr *map[string]string) error {
 	}
 
 	for i := 0; i < size; i++ {
+		c, err := d.PeekCode()
+		if err != nil {
+			return err
+		}
+		if !ljpcode.IsString(c) {
+			return fmt.Errorf("ljpack: unsupported map key: code=%d", c)
+		}
+
 		mk, err := d.DecodeString()
 		if err != nil {
 			return err
@@ -132,6 +140,14 @@ func (d *Decoder) DecodeMap() (map[string]interface{}, error) {
 	m := make(map[string]interface{}, min(n, maxMapSize))
 
 	for i := 0; i < n; i++ {
+		c, err := d.PeekCode()
+		if err != nil {
+			return nil, err
+		}
+		if !ljpcode.IsString(c) {
+			return nil, fmt.Errorf("ljpack: unsupported map key: code=%d", c)
+		}
+
 		mk, err := d.DecodeString()
 		if err != nil {
 			return nil, err
@@ -302,6 +318,14 @@ func (d *Decoder) decodeStruct(v reflect.Value, n int) error {
 
 	fields := structs.Fields(v.Type(), d.structTag)
 	for i := 0; i < n; i++ {
+		c, err := d.PeekCode()
+		if err != nil {
+			return err
+		}
+		if !ljpcode.IsString(c) {
+			return fmt.Errorf("ljpack: unsupported struct name: code=%d", c)
+		}
+
 		name, err := d.decodeStringTemp()
 		if err != nil {
 			return err

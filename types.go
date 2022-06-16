@@ -113,6 +113,17 @@ func (f *field) EncodeValue(e *Encoder, strct reflect.Value) error {
 	return f.encoder(e, v)
 }
 
+func (f *field) EncodeValueNoIntern(e *Encoder, strct reflect.Value) error {
+	v, ok := fieldByIndex(strct, f.index)
+	if !ok {
+		return e.EncodeNil()
+	}
+	if v.Kind() == reflect.String {
+		return e.encodeNormalString(v.String())
+	}
+	return f.encoder(e, v)
+}
+
 func (f *field) DecodeValue(d *Decoder, strct reflect.Value) error {
 	v := fieldByIndexAlloc(strct, f.index)
 	return f.decoder(d, v)
